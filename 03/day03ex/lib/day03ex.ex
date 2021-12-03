@@ -1,3 +1,25 @@
+defimpl Enumerable, for: Tuple do
+  def count(tuple), do: {:ok, Kernel.tuple_size(tuple)}
+  def member?(_tuple, _element), do: {:error, __MODULE__}
+
+  def reduce(_enumerable, {:halt, acc}, _fun), do: {:halted, acc}
+  def reduce(tuple, {:suspend, acc}, fun), do: {:suspended, acc, &reduce(tuple, &1, fun)}
+  def reduce({}, {:cont, acc}, _fun), do: {:done, acc}
+  def reduce({a, b, c, d, e, f}, {:cont, acc}, fun), do: reduce({b, c, d, e, f}, fun.(a, acc), fun)
+  def reduce({a, b, c, d, e}, {:cont, acc}, fun), do: reduce({b, c, d, e}, fun.(a, acc), fun)
+  def reduce({a, b, c, d}, {:cont, acc}, fun), do: reduce({b, c, d}, fun.(a, acc), fun)
+  def reduce({a, b, c}, {:cont, acc}, fun), do: reduce({b, c}, fun.(a, acc), fun)
+  def reduce({a, b}, {:cont, acc}, fun), do: reduce({b}, fun.(a, acc), fun)
+  def reduce({a}, {:cont, acc}, fun), do: reduce({}, fun.(a, acc), fun)
+  def reduce(tuple, {:cont, acc}, fun), do: reduce(Tuple.delete_at(tuple, 0), fun.(Kernel.elem(tuple, 0), acc), fun)
+
+  def slice(tuple), do: {:ok, Kernel.tuple_size(tuple), &slicer(tuple, &1, &2)}
+
+  defp slicer(tuple, start, length) do
+    for index <- start..(start + length), do: Kernel.elem(tuple, index)
+  end
+end
+
 defmodule Day03ex do
   def main([path]) do
     inputs =
@@ -10,7 +32,7 @@ defmodule Day03ex do
     # Yes, epsilon is the bit-inverse of gamma, but Bitwise.bnot thinks it's
     # signed, and weirdness happens. So we'll do it the long way.
     {gamma, epsilon} =
-      Enum.reduce(Tuple.to_list(counts), {0, 0}, fn
+      Enum.reduce(counts, {0, 0}, fn
         c, {g, e} when c > 0 -> {Bitwise.bsl(g, 1) + 1, Bitwise.bsl(e, 1)}
         c, {g, e} when c < 0 -> {Bitwise.bsl(g, 1), Bitwise.bsl(e, 1) + 1}
       end)
