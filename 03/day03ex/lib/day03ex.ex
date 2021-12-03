@@ -4,7 +4,6 @@ defmodule Day03ex do
       File.read!(path)
       |> String.trim()
       |> String.split()
-      |> IO.inspect()
 
     word_size = byte_size(hd(inputs))
 
@@ -22,15 +21,16 @@ defmodule Day03ex do
             ?1 -> Kernel.put_elem(a, i, curr + 1)
           end
         end)
-      end) |> IO.inspect()
+      end)
 
-      # Yes, epsilon is the bit-inverse of gamma, but Bitwise.bnot thinks it's
-      # signed, and weirdness happens. So we'll do it the long way.
-      {gamma, epsilon} = Enum.reduce(Tuple.to_list(counts), {0, 0}, fn
+    # Yes, epsilon is the bit-inverse of gamma, but Bitwise.bnot thinks it's
+    # signed, and weirdness happens. So we'll do it the long way.
+    {gamma, epsilon} =
+      Enum.reduce(Tuple.to_list(counts), {0, 0}, fn
         c, {g, e} when c > 0 -> {Bitwise.bsl(g, 1) + 1, Bitwise.bsl(e, 1)}
         c, {g, e} when c < 0 -> {Bitwise.bsl(g, 1), Bitwise.bsl(e, 1) + 1}
       end)
 
-      IO.puts("Part 1: gamma = #{gamma}, epsilon = #{epsilon}, result = #{gamma * epsilon}")
+    IO.puts("Part 1: gamma = #{gamma}, epsilon = #{epsilon}, result = #{gamma * epsilon}")
   end
 end
