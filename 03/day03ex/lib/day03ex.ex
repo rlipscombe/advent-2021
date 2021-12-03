@@ -5,13 +5,23 @@ defimpl Enumerable, for: Tuple do
   def reduce(_enumerable, {:halt, acc}, _fun), do: {:halted, acc}
   def reduce(tuple, {:suspend, acc}, fun), do: {:suspended, acc, &reduce(tuple, &1, fun)}
   def reduce({}, {:cont, acc}, _fun), do: {:done, acc}
-  def reduce({a, b, c, d, e, f}, {:cont, acc}, fun), do: reduce({b, c, d, e, f}, fun.(a, acc), fun)
+
+  # Optimize? for size 6 and smaller.
+  def reduce({a, b, c, d, e, f}, {:cont, acc}, fun),
+    do: reduce({b, c, d, e, f}, fun.(a, acc), fun)
+
   def reduce({a, b, c, d, e}, {:cont, acc}, fun), do: reduce({b, c, d, e}, fun.(a, acc), fun)
   def reduce({a, b, c, d}, {:cont, acc}, fun), do: reduce({b, c, d}, fun.(a, acc), fun)
   def reduce({a, b, c}, {:cont, acc}, fun), do: reduce({b, c}, fun.(a, acc), fun)
   def reduce({a, b}, {:cont, acc}, fun), do: reduce({b}, fun.(a, acc), fun)
   def reduce({a}, {:cont, acc}, fun), do: reduce({}, fun.(a, acc), fun)
-  def reduce(tuple, {:cont, acc}, fun), do: reduce(Tuple.delete_at(tuple, 0), fun.(Kernel.elem(tuple, 0), acc), fun)
+
+  # Default.
+  def reduce(tuple, {:cont, acc}, fun) do
+    head = Kernel.elem(tuple, 0)
+    tail = Tuple.delete_at(tuple, 0)
+    reduce(tail, fun.(head, acc), fun)
+  end
 
   def slice(tuple), do: {:ok, Kernel.tuple_size(tuple), &slicer(tuple, &1, &2)}
 
