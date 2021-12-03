@@ -66,7 +66,7 @@ defmodule Day03ex do
     end
   end
 
-  defp get_gas([result], _filter, _index), do: String.to_integer(result, 2)
+  defp get_gas([result], _probe, _index), do: String.to_integer(result, 2)
 
   defp get_gas(inputs, probe, index) do
     counts = get_counts(inputs)
