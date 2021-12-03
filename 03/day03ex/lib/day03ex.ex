@@ -33,17 +33,21 @@ defmodule Day03ex do
     counts =
       Enum.reduce(inputs, counts, fn input, acc when is_tuple(counts) ->
         Enum.reduce(Enum.with_index(String.to_charlist(input)), acc, fn {v, i}, a ->
-          curr = Kernel.elem(a, i)
-
           case v do
-            ?0 -> Kernel.put_elem(a, i, curr - 1)
-            ?1 -> Kernel.put_elem(a, i, curr + 1)
+            ?0 -> decrement_elem(a, i)
+            ?1 -> increment_elem(a, i)
           end
         end)
       end)
 
     counts
   end
+
+  defp increment_elem(tuple, index),
+    do: Kernel.put_elem(tuple, index, Kernel.elem(tuple, index) + 1)
+
+  defp decrement_elem(tuple, index),
+    do: Kernel.put_elem(tuple, index, Kernel.elem(tuple, index) - 1)
 
   defp get_oxygen(inputs), do: get_gas(inputs, &oxygen_probe/2, 0)
   defp get_co2(inputs), do: get_gas(inputs, &co2_probe/2, 0)
