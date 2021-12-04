@@ -26,6 +26,7 @@ class _Line {
     // XXX: Assumes calls are not duplicated.
     if (_values.contains(call)) {
       _remaining -= call;
+      assert(_remaining >= 0);
     }
   }
 
