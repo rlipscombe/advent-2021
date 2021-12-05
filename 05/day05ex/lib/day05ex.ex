@@ -2,34 +2,23 @@ defmodule Day05ex do
   def main([path]) do
     lines = File.read!(path) |> String.trim() |> String.split("\n")
     segments = lines |> Enum.map(&parse_segment/1)
+
+    chart_segments = fn segment, map ->
+      Enum.reduce(segment, map, fn {x, y}, map ->
+        Map.update(map, {x, y}, 1, fn c -> c + 1 end)
+      end)
+    end
+
+    is_dangerous? = fn
+      {{_x, _y}, c} when c >= 2 -> true
+      _ -> false
+    end
+
     orthogonals = segments |> Enum.filter(&Segment.is_orthogonal?/1)
-
-    map =
-      Enum.reduce(orthogonals, %{}, fn segment, map ->
-        Enum.reduce(segment, map, fn {x, y}, map ->
-          Map.update(map, {x, y}, 1, fn c -> c + 1 end)
-        end)
-      end)
-
-    part1 =
-      Enum.count(map, fn
-        {{_x, _y}, c} when c >= 2 -> true
-        _ -> false
-      end)
-
+    part1 = Enum.reduce(orthogonals, %{}, chart_segments) |> Enum.count(is_dangerous?)
     IO.puts("Part1: #{part1}")
 
-    part2 =
-      Enum.reduce(segments, %{}, fn segment, map ->
-        Enum.reduce(segment, map, fn {x, y}, map ->
-          Map.update(map, {x, y}, 1, fn c -> c + 1 end)
-        end)
-      end)
-      |> Enum.count(fn
-        {{_x, _y}, c} when c >= 2 -> true
-        _ -> false
-      end)
-
+    part2 = Enum.reduce(segments, %{}, chart_segments) |> Enum.count(is_dangerous?)
     IO.puts("Part2: #{part2}")
   end
 
