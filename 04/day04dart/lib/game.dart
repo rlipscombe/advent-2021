@@ -3,9 +3,9 @@ import 'game_parser.dart';
 
 List<List<int>> transpose(List<List<int>> _Lines) {
   List<List<int>> result = List.generate(_Lines[0].length, (_) => []);
-  for (var _Line in _Lines) {
-    for (var i = 0; i < _Line.length; i++) {
-      result[i].add(_Line[i]);
+  for (var line in _Lines) {
+    for (var i = 0; i < line.length; i++) {
+      result[i].add(line[i]);
     }
   }
   return result;

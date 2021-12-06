@@ -8,20 +8,19 @@ class GameDefinition extends GrammarDefinition {
   Parser calls() =>
       ref0(number).separatedBy(char(','), includeSeparators: false);
 
-  Parser board() => ref0(row).plus();
+  Parser<List<List<int>>> board() =>
+      ref0(row).separatedBy(Token.newlineParser(), includeSeparators: false);
 
   Parser<List<int>> row() =>
       ref0(number).separatedBy(char(' ').plus(), includeSeparators: false);
 
-  Parser<int> number() => digit().plus().flatten().trim().map(int.parse);
+  Parser<int> number() => digit().plus().flatten().map(int.parse);
 }
 
 class MyDefinition extends GrammarDefinition {
   @override
-  Parser start() => throw UnsupportedError('Not yet.');
-  Parser commas() =>
-      ref0(number).separatedBy(char(','), includeSeparators: false);
-  Parser spaces() =>
-      ref0(number).separatedBy(char(' '), includeSeparators: false);
-  Parser<int> number() => digit().plus().flatten().trim().map(int.parse);
+  Parser start() => throw UnsupportedError('todo');
+
+  Parser line() => char(any()).plus().flatten();
+  Parser verse() => ref0(line);
 }
