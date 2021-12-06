@@ -5,27 +5,28 @@ defmodule Wise do
     counts =
       fish
       |> Enum.reduce(
-        %{},
-        fn age, counts -> Map.update(counts, age, 1, fn x -> x + 1 end) end
+        :array.new(size: 9, fixed: true, default: 0),
+        fn age, counts ->
+          count = :array.get(age, counts)
+          :array.set(age, count + 1, counts)
+        end
       )
       |> IO.inspect()
 
     iterator = fn counts ->
-      %{
-        0 => Map.get(counts, 1, 0),
-        1 => Map.get(counts, 2, 0),
-        2 => Map.get(counts, 3, 0),
-        3 => Map.get(counts, 4, 0),
-        4 => Map.get(counts, 5, 0),
-        5 => Map.get(counts, 6, 0),
-        6 => Map.get(counts, 7, 0) + Map.get(counts, 0, 0),
-        7 => Map.get(counts, 8, 0),
-        8 => Map.get(counts, 0, 0)
-      }
+      counts = :array.set(0, :array.get(1, counts), counts)
+      counts = :array.set(1, :array.get(2, counts), counts)
+      counts = :array.set(2, :array.get(3, counts), counts)
+      counts = :array.set(3, :array.get(4, counts), counts)
+      counts = :array.set(4, :array.get(5, counts), counts)
+      counts = :array.set(5, :array.get(6, counts), counts)
+      counts = :array.set(6, :array.get(7, counts) + :array.get(0, counts), counts)
+      counts = :array.set(7, :array.get(8, counts), counts)
+      :array.set(8, :array.get(0, counts), counts)
     end
 
     formatter = fn {counts, day} ->
-      total = Map.to_list(counts) |> Enum.reduce(0, fn {_k, v}, acc -> acc + v end)
+      total = :array.foldl(fn (_i, v, acc) -> acc + v end, 0, counts)
       IO.puts("#{day}: #{total}")
     end
 
