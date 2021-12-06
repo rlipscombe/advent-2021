@@ -6,35 +6,29 @@ defmodule Day06ex do
       |> String.split(",")
       |> Enum.map(&String.to_integer/1)
 
-    iterator = fn fish ->
-      {fish, fry} =
-        Enum.map_reduce(fish, [], fn
-          timer, acc when timer == 0 -> {6, [8 | acc]}
-          timer, acc -> {timer - 1, acc}
-        end)
-
-      fish ++ fry
-    end
-
-    # formatter = &format_fish/1
-    formatter = &count_fish/1
-
-    fish
-    |> Enum.reverse()
-    |> Stream.iterate(iterator)
-    |> Stream.with_index()
-    |> Stream.each(formatter)
-    |> Stream.take(String.to_integer(days) + 1)
-    |> Stream.run()
+    fish = evolve(fish, String.to_integer(days))
+    IO.puts("Part 1: #{length(fish)}")
   end
 
-  defp count_fish({fish, day}), do: IO.puts("#{day}: #{length(fish)}")
+  defp evolve(fish, days) do
+    evolve_2(fish, length(fish), 0, days)
+  end
 
-  defp format_fish({fish, day}),
-    do: IO.puts("#{format_prefix(day)} #{Enum.join(Enum.reverse(fish), ",")} (#{length(fish)} fish)")
+  defp evolve_2(fish, count, day, days) when day < days do
+    IO.puts("Day #{day}: #{count} fish")
+    evolve_3(fish, count, [], [], day, days)
+  end
 
-  defp format_prefix(day) when day == 0, do: "Initial state:"
-  defp format_prefix(day) when day == 1, do: "After  #{day} day:"
-  defp format_prefix(day) when day > 1 and day < 10, do: "After  #{day} days:"
-  defp format_prefix(day), do: "After #{day} days:"
+  defp evolve_2(fish, _count, _day, _days), do: fish
+
+  defp evolve_3([f | fish], count, acc, fry, day, days) do
+    case f do
+      0 -> evolve_3(fish, count + 1, [6 | acc], [8 | fry], day, days)
+      n -> evolve_3(fish, count, [n - 1 | acc], fry, day, days)
+    end
+  end
+
+  defp evolve_3([], count, acc, fry, day, days) do
+    evolve_2(Enum.reverse(List.flatten([fry, acc])), count, day + 1, days)
+  end
 end
