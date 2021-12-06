@@ -1,0 +1,4 @@
+day06ex
+_build/
+deps/
+.elixir_ls/
