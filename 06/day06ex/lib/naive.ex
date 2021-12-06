@@ -1,5 +1,5 @@
 defmodule Naive do
-  def run(fish, days) do
+  def run(fish, days) when is_list(fish) and is_integer(days) do
     iterator = fn fish ->
       {fish, fry} =
         Enum.map_reduce(fish, [], fn
@@ -18,7 +18,7 @@ defmodule Naive do
     |> Stream.iterate(iterator)
     |> Stream.with_index()
     |> Stream.each(formatter)
-    |> Stream.take(String.to_integer(days) + 1)
+    |> Stream.take(days + 1)
     |> Stream.run()
   end
 

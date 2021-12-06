@@ -6,7 +6,7 @@ defmodule Day06ex do
       |> String.split(",")
       |> Enum.map(&String.to_integer/1)
 
-    #Naive.run(fish, days)
-    Wise.run(fish, days)
+    #Naive.run(fish, String.to_integer(days))
+    Wise.run(fish, String.to_integer(days))
   end
 end
