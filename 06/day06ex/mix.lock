@@ -1,0 +1,9 @@
+%{
+  "broadway": {:hex, :broadway, "1.0.1", "7b4ca0b439a425730b5fc1bf06aae350df6171434fd4f29bdbbe50d2d9d518fb", [:mix], [{:gen_stage, "~> 1.0", [hex: :gen_stage, repo: "hexpm", optional: false]}, {:nimble_options, "~> 0.3.7", [hex: :nimble_options, repo: "hexpm", optional: false]}, {:telemetry, "~> 0.4.3 or ~> 1.0", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "6d1c7fdc100ba484a477c42881553dfa1730f31c461308286132efbfeb85568f"},
+  "gen_stage": {:hex, :gen_stage, "1.1.2", "b1656cd4ba431ed02c5656fe10cb5423820847113a07218da68eae5d6a260c23", [:mix], [], "hexpm", "9e39af23140f704e2b07a3e29d8f05fd21c2aaf4088ff43cb82be4b9e3148d02"},
+  "jobs": {:hex, :jobs, "0.10.0", "329c024a889249ea8262d0ef70bc7a498b7c96da95977ebd026b13b069fb0e13", [:rebar3], [{:parse_trans, "3.4.0", [hex: :parse_trans, repo: "hexpm", optional: false]}, {:setup, "2.1.0", [hex: :setup, repo: "hexpm", optional: false]}], "hexpm", "09d486146bd32897726bb1f63dd95d1eb7f6f5a4c21c38ca58ab1646e8229724"},
+  "nimble_options": {:hex, :nimble_options, "0.3.7", "1e52dd7673d36138b1a5dede183b5d86dff175dc46d104a8e98e396b85b04670", [:mix], [], "hexpm", "2086907e6665c6b6579be54ef5001928df5231f355f71ed258f80a55e9f63633"},
+  "parse_trans": {:hex, :parse_trans, "3.4.0", "bb87ac362a03ca674ebb7d9d498f45c03256aded7214c9101f7035ef44b798c7", [:rebar3], [], "hexpm", "f99e368830bea44552224e37e04943a54874f08b8590485de8d13832b63a2dc3"},
+  "setup": {:hex, :setup, "2.1.0", "05f69185a5eb71474c9bc6ba892565651ec7507791f85632b7b914dbfe130510", [:rebar3], [], "hexpm", "efd072578f0cf85bea96caaffc7adb0992398272522660a136e10567377071c5"},
+  "telemetry": {:hex, :telemetry, "1.0.0", "0f453a102cdf13d506b7c0ab158324c337c41f1cc7548f0bc0e130bbf0ae9452", [:rebar3], [], "hexpm", "73bc09fa59b4a0284efb4624335583c528e07ec9ae76aca96ea0673850aec57a"},
+}
