@@ -9,6 +9,8 @@ defmodule Day06ex do
     days = String.to_integer(days)
 
     {:ok, _} = Future.start_link()
+    apply(__MODULE__, :future_info, [])
+    :timer.apply_interval(5_000, __MODULE__, :future_info, [])
 
     Future.async(fn -> evolve(fish, 0, days) end)
     |> Future.await()
@@ -31,5 +33,9 @@ defmodule Day06ex do
       Future.async(fn -> evolve(fish, day + 1, days) end),
       Future.async(fn -> evolve(fry, day + 1, days) end)
     ])
+  end
+
+  def future_info() do
+    Future.Server.info() |> IO.inspect()
   end
 end

@@ -18,8 +18,6 @@ defmodule Future do
   end
 
   def await(fut = %Future{}) do
-    #IO.puts("await(#{inspect(fut)})")
-
     result =
       case Future.Server.call({:await, fut}) do
         %Future.Result{value: value} ->
@@ -29,13 +27,13 @@ defmodule Future do
           await(next)
       end
 
-    #IO.puts("result = #{inspect(result)}")
     result
   end
 
   def await(_fut = %Future.Join{futures: futures}), do: await_many(futures, [])
 
   defp await_many([], acc), do: acc
+
   defp await_many([fut | futures], acc) do
     await_many(futures, [await(fut) | acc])
   end
