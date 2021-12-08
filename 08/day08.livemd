@@ -1,5 +1,20 @@
 # Advent of Code, Day 8
 
+## Setting up Livebook
+
+You'll need to use Elixir ~> 1.12. Here's my `.envrc`:
+
+```
+use erlang OTP-24.1.7
+use elixir 1.13.0
+```
+
+Install the latest development version of Livebook:
+
+```bash
+mix escript.install github livebook-dev/livebook
+```
+
 ## Prerequisites
 
 ```elixir
