@@ -9,45 +9,127 @@ Mix.install([{:kino, github: "livebook-dev/kino"}])
 ## Part 1
 
 ```elixir
-segments = %{
-  0 => ~w(a b c e f g)a,
-  1 => ~w(c f)a,
-  2 => ~w(a c d e g)a,
-  3 => ~w(a c d f g)a,
-  4 => ~w(b c d f)a,
-  5 => ~w(a b d f g)a,
-  6 => ~w(a b d e f g)a,
-  7 => ~w(a c f)a,
-  8 => ~w(a b c d e f g)a,
-  9 => ~w(a b c d f g)a
-}
+problem = Kino.Input.textarea("Input:")
+```
 
+```elixir
+segments = %{
+  0 => "abcefg",
+  1 => "cf",
+  2 => "acdeg",
+  3 => "acdfg",
+  4 => "bcdf",
+  5 => "abdfg",
+  6 => "abdefg",
+  7 => "acf",
+  8 => "abcdefg",
+  9 => "abcdfg"
+}
+```
+
+```elixir
+reverse = segments |> Enum.reduce(%{}, fn {k, v}, acc -> Map.put(acc, v, k) end)
+```
+
+```elixir
 counts =
   Enum.reduce(segments, %{}, fn {digit, segments}, acc ->
-    Map.update(acc, length(segments), [digit], fn x -> [digit | x] end)
+    Map.update(acc, byte_size(segments), [digit], fn x -> [digit | x] end)
   end)
 
 unique = Enum.filter(counts, fn {_k, v} -> length(v) == 1 end) |> Map.new()
 ```
 
 ```elixir
-problem = Kino.Input.textarea("Example:")
-```
-
-```elixir
 problem = Kino.Input.read(problem)
+
+parse_part = fn part ->
+  part
+  |> String.split(" ", trim: true)
+  |> Enum.map(fn x -> x |> String.graphemes() |> Enum.sort() |> Enum.join() end)
+end
+
+parse_line = fn line ->
+  [inputs, outputs] = String.split(line, "|", trim: true)
+  inputs = parse_part.(inputs)
+  outputs = parse_part.(outputs)
+  {inputs, outputs}
+end
 
 problem =
   problem
   |> String.split("\n", trim: true)
-  |> Enum.map(fn line ->
-    [inputs, outputs] = String.split(line, "|", trim: true)
-    inputs = String.split(inputs, " ", trim: true)
-    outputs = String.split(outputs, " ", trim: true)
-    {inputs, outputs}
-  end)
+  |> Enum.map(parse_line)
+```
 
+```elixir
 Enum.reduce(problem, 0, fn {_inputs, outputs}, acc ->
   acc + Enum.count(outputs, fn o -> Map.has_key?(unique, byte_size(o)) end)
 end)
+```
+
+## Part 2
+
+Brute force always works, right?
+
+```elixir
+defmodule EnumEx do
+  # https://elixirforum.com/t/most-elegant-way-to-generate-all-permutations/2706/2
+  def permutations([]), do: [[]]
+
+  def permutations(list),
+    do: for(elem <- list, rest <- permutations(list -- [elem]), do: [elem | rest])
+end
+```
+
+```elixir
+# 5040 permutations
+permutations =
+  EnumEx.permutations(~w(a b c d e f g))
+  |> Enum.map(&(Enum.zip(~w(a b c d e f g), &1) |> Enum.into(%{})))
+```
+
+```elixir
+permute = fn str, perm ->
+  String.graphemes(str) |> Enum.map(&Map.fetch!(perm, &1)) |> Enum.sort() |> Enum.join()
+end
+```
+
+```elixir
+# For each permutation, create the corresponding segment => number mapping.
+# Then run the input and output through that mapping. There should be only one valid
+# permutation.
+possibilities =
+  Enum.map(permutations, fn p ->
+    arrangement = Enum.map(reverse, fn {k, v} -> {permute.(k, p), v} end) |> Enum.into(%{})
+    arrangement
+  end)
+```
+
+```elixir
+defmodule Convert do
+  def to_number(list), do: to_number(list, 0)
+  def to_number([], acc), do: acc
+  def to_number([x | xs], acc), do: to_number(xs, x + acc * 10)
+end
+
+Convert.to_number([1, 2, 3])
+```
+
+```elixir
+solution =
+  for {i, o} <- problem do
+    [solution] =
+      Enum.filter(possibilities, fn poss ->
+        Enum.all?(i, &Map.has_key?(poss, &1)) and
+          Enum.all?(o, &Map.has_key?(poss, &1))
+      end)
+
+    {Convert.to_number(Enum.map(i, &Map.fetch!(solution, &1))),
+     Convert.to_number(Enum.map(o, &Map.fetch!(solution, &1)))}
+  end
+```
+
+```elixir
+Enum.reduce(solution, 0, fn {_, o}, acc -> acc + o end)
 ```
