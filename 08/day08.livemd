@@ -1,0 +1,53 @@
+# Advent of Code, Day 8
+
+## Prerequisites
+
+```elixir
+Mix.install([{:kino, github: "livebook-dev/kino"}])
+```
+
+## Part 1
+
+```elixir
+segments = %{
+  0 => ~w(a b c e f g)a,
+  1 => ~w(c f)a,
+  2 => ~w(a c d e g)a,
+  3 => ~w(a c d f g)a,
+  4 => ~w(b c d f)a,
+  5 => ~w(a b d f g)a,
+  6 => ~w(a b d e f g)a,
+  7 => ~w(a c f)a,
+  8 => ~w(a b c d e f g)a,
+  9 => ~w(a b c d f g)a
+}
+
+counts =
+  Enum.reduce(segments, %{}, fn {digit, segments}, acc ->
+    Map.update(acc, length(segments), [digit], fn x -> [digit | x] end)
+  end)
+
+unique = Enum.filter(counts, fn {_k, v} -> length(v) == 1 end) |> Map.new()
+```
+
+```elixir
+problem = Kino.Input.textarea("Example:")
+```
+
+```elixir
+problem = Kino.Input.read(problem)
+
+problem =
+  problem
+  |> String.split("\n", trim: true)
+  |> Enum.map(fn line ->
+    [inputs, outputs] = String.split(line, "|", trim: true)
+    inputs = String.split(inputs, " ", trim: true)
+    outputs = String.split(outputs, " ", trim: true)
+    {inputs, outputs}
+  end)
+
+Enum.reduce(problem, 0, fn {_inputs, outputs}, acc ->
+  acc + Enum.count(outputs, fn o -> Map.has_key?(unique, byte_size(o)) end)
+end)
+```
