@@ -13,6 +13,13 @@ Install the latest development version of Livebook:
 
 ```bash
 mix escript.install github livebook-dev/livebook
+export PATH=$PATH:$HOME/.mix/escripts
+```
+
+## Running Livebook
+
+```bash
+livebook server
 ```
 
 ## Prerequisites
@@ -51,7 +58,9 @@ counts =
   Enum.reduce(segments, %{}, fn {digit, segments}, acc ->
     Map.update(acc, byte_size(segments), [digit], fn x -> [digit | x] end)
   end)
+```
 
+```elixir
 unique = Enum.filter(counts, fn {_k, v} -> length(v) == 1 end) |> Map.new()
 ```
 
@@ -147,4 +156,125 @@ solution =
 
 ```elixir
 Enum.reduce(solution, 0, fn {_, o}, acc -> acc + o end)
+```
+
+## Part 2, no brute force
+
+It turns out that you can look at the occurences of each segment to work out the reverse mapping.
+
+That is: `a` appears in 8 of the different numbers; `b` appears in 6 of the numbers, etc.
+
+You can prove it by running the following:
+
+```elixir
+reverse
+|> Enum.reduce(
+  %{},
+  fn {k, _v}, acc ->
+    Enum.reduce(String.graphemes(k), acc, fn ch, acc ->
+      Map.update(acc, ch, 1, fn c -> c + 1 end)
+    end)
+  end
+)
+|> Enum.reduce(%{}, fn {k, v}, acc -> Map.update(acc, v, k, fn ks -> [k | ks] end) end)
+```
+
+...which should result in the following:
+
+* 4 => `e`
+* 6 => `b`
+* 7 => `d, g`
+* 8 => `a, c`
+* 9 => `f`
+
+This means that if you see a letter appear in exactly 4 of the scrambled patterns, it must mean `e`.
+If a letter appears in 6 patterns, it must mean `b`, and so on.
+
+<!-- livebook:{"break_markdown":true} -->
+
+Reminder: here are the counts. If there are 2, 3, 4 or 7 characters in the pattern, it's unique.
+
+```elixir
+counts |> IO.inspect(charlists: :as_lists)
+:ok
+```
+
+```elixir
+# Helpers
+find_pattern_of_length = fn patterns, len ->
+  Enum.find(patterns, fn x -> String.length(x) == len end)
+end
+
+find_character_not = fn haystack, needles ->
+  [ch] = String.graphemes(haystack) |> Enum.reject(&Enum.member?(needles, &1))
+  ch
+end
+```
+
+```elixir
+# each line uses a different permutations
+for {i, o} <- problem do
+  patterns = MapSet.new()
+  patterns = Enum.reduce(i, patterns, fn i, acc -> MapSet.put(acc, i) end)
+  patterns = Enum.reduce(o, patterns, fn o, acc -> MapSet.put(acc, o) end)
+
+  # For each letter, how many different patterns contain that letter?
+  counts =
+    patterns
+    |> Enum.reduce(%{}, fn pattern, acc ->
+      Enum.reduce(String.graphemes(pattern), acc, fn g, acc ->
+        Map.update(acc, g, 1, fn x -> x + 1 end)
+      end)
+    end)
+
+  mapping = %{}
+
+  # Deal with the unique letters first.
+  # If the letter appears 4 times, it must map to 'e':
+  {e, _} = Enum.find(counts, fn {_k, v} -> v == 4 end)
+  mapping = Map.put(mapping, e, "e")
+  # If the letter appears 6 times, it must map to 'b':
+  {b, _} = Enum.find(counts, fn {_k, v} -> v == 6 end)
+  mapping = Map.put(mapping, b, "b")
+  # If the letter appears 9 times, it must map to 'f':
+  {f, _} = Enum.find(counts, fn {_k, v} -> v == 9 end)
+  mapping = Map.put(mapping, f, "f")
+
+  # We know that "cf" is unique, and we know "f" at this point, so
+  # we can figure out "c".
+  cf = find_pattern_of_length.(patterns, 2)
+  # Which character is not 'f'?
+  c = find_character_not.(cf, [f])
+  mapping = Map.put(mapping, c, "c")
+
+  # We know that "acf" is unique, and we know "c" and "f",
+  # so we can figure out "a".
+  acf = find_pattern_of_length.(patterns, 3)
+  a = find_character_not.(acf, [c, f])
+  mapping = Map.put(mapping, a, "a")
+
+  # We know that "bcdf" is unique, and we know "bcf", so "d":
+  bcdf = find_pattern_of_length.(patterns, 4)
+  d = find_character_not.(bcdf, [b, c, f])
+  mapping = Map.put(mapping, d, "d")
+
+  # We know that "abcdefg" is unique, and we know "abcdef", so "g":
+  abcdefg = find_pattern_of_length.(patterns, 7)
+  g = find_character_not.(abcdefg, [a, b, c, d, e, f])
+  mapping = Map.put(mapping, g, "g")
+
+  # ...and we're done.
+  7 = Enum.count(mapping)
+
+  # Now we can run the output through the mapping.
+  decoded =
+    Enum.map(o, fn o ->
+      String.graphemes(o) |> Enum.map(&Map.fetch!(mapping, &1)) |> Enum.sort() |> Enum.join()
+    end)
+
+  # ...and run that through the reverse table to generate the digits
+  digits = Enum.map(decoded, &Map.fetch!(reverse, &1))
+  Convert.to_number(digits)
+end
+|> Enum.reduce(fn x, y -> x + y end)
 ```
