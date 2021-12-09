@@ -3,7 +3,7 @@
 ## Prerequisites
 
 ```elixir
-Mix.install([{:kino, github: "livebook-dev/kino"}])
+Mix.install([{:kino, github: "livebook-dev/kino"}, {:libgraph, "~> 0.7"}])
 ```
 
 ## Input
@@ -26,6 +26,8 @@ defmodule Heightmap do
   def new() do
     %__MODULE__{rows: 0, cols: 0, values: %{}}
   end
+
+  def dimensions(%__MODULE__{rows: rows, cols: cols}), do: {rows, cols}
 
   def put(%__MODULE__{rows: rows, cols: cols, values: v}, r, c, h)
       when is_integer(r) and r >= 0 and is_integer(c) and c >= 0 and is_integer(h) and h >= 0 do
@@ -52,8 +54,13 @@ defmodule Heightmap do
     end
   end
 
-  def reduce(%__MODULE__{values: v}, acc, fun) when is_function(fun, 2) do
-    Enum.reduce(v, acc, fun)
+  def reduce(%__MODULE__{rows: rows, cols: cols, values: v}, acc, fun) when is_function(fun, 2) do
+    Enum.reduce(0..(rows - 1), acc, fn r, acc ->
+      Enum.reduce(0..(cols - 1), acc, fn c, acc ->
+        h = Map.fetch!(v, {r, c})
+        fun.({{r, c}, h}, acc)
+      end)
+    end)
   end
 end
 ```
@@ -76,7 +83,6 @@ heightmap
 Heightmap.reduce(heightmap, 0, fn {{r, c}, v}, acc ->
   # Is this point lower than all of its adjacents?
   adjacents = Heightmap.adjacents(heightmap, r, c)
-  IO.inspect(adjacents)
 
   if Enum.all?(adjacents, fn {_r, _c, h} ->
        v < h
@@ -84,4 +90,55 @@ Heightmap.reduce(heightmap, 0, fn {{r, c}, v}, acc ->
      do: acc + v + 1,
      else: acc
 end)
+```
+
+## Part 2
+
+`libgraph` looks like our friend here. So let's build a graph representing the input.
+
+```elixir
+g =
+  Heightmap.reduce(heightmap, Graph.new(type: :undirected), fn
+    {{_, _}, 9}, acc ->
+      acc
+
+    {{r = 0, c = 0}, h}, acc ->
+      vertex = {r, c}
+      Graph.add_vertex(acc, vertex, "#{r}, #{c}: #{h}")
+
+    {{r = 0, c}, h}, acc ->
+      vertex = {r, c}
+      west = {r, c - 1}
+      acc = Graph.add_vertex(acc, vertex, "#{r}, #{c}: #{h}")
+      acc = if Graph.has_vertex?(acc, west), do: Graph.add_edge(acc, vertex, west), else: acc
+      acc
+
+    {{r, c = 0}, h}, acc ->
+      vertex = {r, c}
+      north = {r - 1, c}
+      acc = Graph.add_vertex(acc, vertex, "#{r}, #{c}: #{h}")
+      acc = if Graph.has_vertex?(acc, north), do: Graph.add_edge(acc, vertex, north), else: acc
+      acc
+
+    {{r, c}, h}, acc ->
+      vertex = {r, c}
+      west = {r, c - 1}
+      north = {r - 1, c}
+      acc = Graph.add_vertex(acc, vertex, "#{r}, #{c}: #{h}")
+      acc = if Graph.has_vertex?(acc, west), do: Graph.add_edge(acc, vertex, west), else: acc
+      acc = if Graph.has_vertex?(acc, north), do: Graph.add_edge(acc, vertex, north), else: acc
+      acc
+  end)
+
+:ok
+```
+
+```elixir
+components = Graph.components(g)
+
+components
+|> Enum.map(&length/1)
+|> Enum.sort(&>/2)
+|> Enum.take(3)
+|> Enum.reduce(fn x, y -> x * y end)
 ```
