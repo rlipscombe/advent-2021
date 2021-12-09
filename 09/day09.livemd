@@ -1,0 +1,87 @@
+# Advent of Code 2021, Day 9
+
+## Prerequisites
+
+```elixir
+Mix.install([{:kino, github: "livebook-dev/kino"}])
+```
+
+## Input
+
+```elixir
+heightmap = Kino.Input.textarea("Enter your heightmap:")
+```
+
+```elixir
+input =
+  Kino.Input.read(heightmap)
+  |> String.split("\n", trim: true)
+  |> Enum.map(fn row -> String.graphemes(row) |> Enum.map(&String.to_integer/1) end)
+```
+
+```elixir
+defmodule Heightmap do
+  defstruct [:rows, :cols, :values]
+
+  def new() do
+    %__MODULE__{rows: 0, cols: 0, values: %{}}
+  end
+
+  def put(%__MODULE__{rows: rows, cols: cols, values: v}, r, c, h)
+      when is_integer(r) and r >= 0 and is_integer(c) and c >= 0 and is_integer(h) and h >= 0 do
+    %__MODULE__{rows: max(rows, r + 1), cols: max(cols, c + 1), values: Map.put(v, {r, c}, h)}
+  end
+
+  def get(%__MODULE__{rows: rows, cols: cols, values: v}, r, c)
+      when is_integer(r) and r >= 0 and r < rows and is_integer(c) and c >= 0 and c < cols do
+    Map.fetch!(v, {r, c})
+  end
+
+  def adjacents(map = %__MODULE__{}, r, c) do
+    []
+    |> collect(map, r - 1, c)
+    |> collect(map, r + 1, c)
+    |> collect(map, r, c - 1)
+    |> collect(map, r, c + 1)
+  end
+
+  defp collect(result, %__MODULE__{rows: rows, cols: cols, values: v}, r, c) do
+    cond do
+      r >= 0 and r < rows and c >= 0 and c < cols -> [{r, c, Map.fetch!(v, {r, c})} | result]
+      true -> result
+    end
+  end
+
+  def reduce(%__MODULE__{values: v}, acc, fun) when is_function(fun, 2) do
+    Enum.reduce(v, acc, fun)
+  end
+end
+```
+
+```elixir
+{_, heightmap} =
+  Enum.reduce(input, {0, Heightmap.new()}, fn row, {r, acc} ->
+    {_, _, map} =
+      Enum.reduce(row, {r, 0, acc}, fn h, {r, c, acc} ->
+        {r, c + 1, Heightmap.put(acc, r, c, h)}
+      end)
+
+    {r + 1, map}
+  end)
+
+heightmap
+```
+
+```elixir
+Heightmap.reduce(heightmap, 0, fn {{r, c}, v}, acc ->
+  # Is this point lower than all of its adjacents?
+  adjacents = Heightmap.adjacents(heightmap, r, c)
+  IO.inspect(adjacents)
+
+  if Enum.all?(adjacents, fn {_r, _c, h} ->
+       v < h
+     end),
+     do: acc + v + 1,
+     else: acc
+end)
+```
