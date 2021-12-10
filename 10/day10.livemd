@@ -20,29 +20,25 @@ length(lines)
 ```
 
 ```elixir
-counterpart = %{
+closing = %{
   ?\[ => ?\],
-  ?\] => ?\[,
   ?\{ => ?\},
-  ?\} => ?\{,
   ?\( => ?\),
-  ?\) => ?\(,
-  ?\< => ?\>,
-  ?\> => ?\<
+  ?\< => ?\>
 }
 ```
 
 ```elixir
-mismatched_paren = fn _line, ch, acc ->
-  # "#{line} - Expected #{<<counterpart[hd(acc)]>>}, but found #{<<ch>>} instead."
-  %{expected: counterpart[hd(acc)], found: ch}
+mismatched_paren = fn line, ch, acc ->
+  # IO.puts("#{line} - Expected #{<<hd(acc)>>}, but found #{<<ch>>} instead.")
+  %{expected: hd(acc), found: ch}
 end
 
 scan = fn line ->
   result =
     Enum.reduce_while(line, [], fn
       ch, acc when ch in [?\[, ?\{, ?\(, ?\<] ->
-        {:cont, [counterpart[ch] | acc]}
+        {:cont, [closing[ch] | acc]}
 
       ch, _acc = [ch | rest] ->
         {:cont, rest}
