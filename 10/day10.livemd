@@ -41,46 +41,19 @@ end
 scan = fn line ->
   result =
     Enum.reduce_while(line, [], fn
-      ch = ?\[, acc ->
-        {:cont, [ch | acc]}
+      ch, acc when ch in [?\[, ?\{, ?\(, ?\<] ->
+        {:cont, [counterpart[ch] | acc]}
 
-      ch = ?\{, acc ->
-        {:cont, [ch | acc]}
-
-      ch = ?\(, acc ->
-        {:cont, [ch | acc]}
-
-      ch = ?\<, acc ->
-        {:cont, [ch | acc]}
-
-      _ch = ?\], _acc = [?\[ | rest] ->
+      ch, _acc = [ch | rest] ->
         {:cont, rest}
 
-      ch = ?\], acc = [_ | _rest] ->
-        {:halt, mismatched_paren.(line, ch, acc)}
-
-      _ch = ?\}, _acc = [?\{ | rest] ->
-        {:cont, rest}
-
-      ch = ?\}, acc = [_ | _rest] ->
-        {:halt, mismatched_paren.(line, ch, acc)}
-
-      _ch = ?\), _acc = [?\( | rest] ->
-        {:cont, rest}
-
-      ch = ?\), acc = [_ | _rest] ->
-        {:halt, mismatched_paren.(line, ch, acc)}
-
-      _ch = ?\>, _acc = [?\< | rest] ->
-        {:cont, rest}
-
-      ch = ?\>, acc = [_ | _rest] ->
+      ch, acc = [_ | _] ->
         {:halt, mismatched_paren.(line, ch, acc)}
     end)
 
   case result do
     [] -> :ok
-    [_ | _] -> :incomplete
+    stack = [_ | _] -> {:incomplete, stack}
     _ -> {:corrupt, result}
   end
 end
@@ -104,4 +77,38 @@ lines
   {:corrupt, %{found: ch}}, acc -> acc + points_for.(ch)
   _, acc -> acc
 end)
+```
+
+## Part 2
+
+```elixir
+completion_score = fn stack ->
+  Enum.reduce(stack, 0, fn
+    ?\), acc -> acc * 5 + 1
+    ?\], acc -> acc * 5 + 2
+    ?\}, acc -> acc * 5 + 3
+    ?\>, acc -> acc * 5 + 4
+  end)
+end
+
+288_957 = completion_score.('}}]])})]')
+5566 = completion_score.(')}>]})')
+1_480_781 = completion_score.('}}>}>))))')
+995_444 = completion_score.(']]}}]}]}>')
+294 = completion_score.('])}>')
+:pass
+```
+
+```elixir
+scores =
+  lines
+  |> Enum.map(scan)
+  |> Enum.reduce([], fn
+    {:incomplete, stack}, acc -> [completion_score.(stack) | acc]
+    _, acc -> acc
+  end)
+  |> Enum.sort()
+
+pos = div(Enum.count(scores), 2)
+Enum.at(scores, pos)
 ```
