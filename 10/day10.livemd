@@ -1,0 +1,107 @@
+# Advent of Code 2021, Day 10
+
+## Dependencies
+
+```elixir
+Mix.install([{:kino, github: "livebook-dev/kino"}])
+```
+
+```elixir
+input = Kino.Input.textarea("Enter your program:")
+```
+
+```elixir
+lines =
+  Kino.Input.read(input)
+  |> String.split("\n", trim: true)
+  |> Enum.map(&String.to_charlist/1)
+
+length(lines)
+```
+
+```elixir
+counterpart = %{
+  ?\[ => ?\],
+  ?\] => ?\[,
+  ?\{ => ?\},
+  ?\} => ?\{,
+  ?\( => ?\),
+  ?\) => ?\(,
+  ?\< => ?\>,
+  ?\> => ?\<
+}
+```
+
+```elixir
+mismatched_paren = fn _line, ch, acc ->
+  # "#{line} - Expected #{<<counterpart[hd(acc)]>>}, but found #{<<ch>>} instead."
+  %{expected: counterpart[hd(acc)], found: ch}
+end
+
+scan = fn line ->
+  result =
+    Enum.reduce_while(line, [], fn
+      ch = ?\[, acc ->
+        {:cont, [ch | acc]}
+
+      ch = ?\{, acc ->
+        {:cont, [ch | acc]}
+
+      ch = ?\(, acc ->
+        {:cont, [ch | acc]}
+
+      ch = ?\<, acc ->
+        {:cont, [ch | acc]}
+
+      _ch = ?\], _acc = [?\[ | rest] ->
+        {:cont, rest}
+
+      ch = ?\], acc = [_ | _rest] ->
+        {:halt, mismatched_paren.(line, ch, acc)}
+
+      _ch = ?\}, _acc = [?\{ | rest] ->
+        {:cont, rest}
+
+      ch = ?\}, acc = [_ | _rest] ->
+        {:halt, mismatched_paren.(line, ch, acc)}
+
+      _ch = ?\), _acc = [?\( | rest] ->
+        {:cont, rest}
+
+      ch = ?\), acc = [_ | _rest] ->
+        {:halt, mismatched_paren.(line, ch, acc)}
+
+      _ch = ?\>, _acc = [?\< | rest] ->
+        {:cont, rest}
+
+      ch = ?\>, acc = [_ | _rest] ->
+        {:halt, mismatched_paren.(line, ch, acc)}
+    end)
+
+  case result do
+    [] -> :ok
+    [_ | _] -> :incomplete
+    _ -> {:corrupt, result}
+  end
+end
+```
+
+## Part 1
+
+```elixir
+points_for = fn
+  ?\) -> 3
+  ?\] -> 57
+  ?\} -> 1197
+  ?\> -> 25137
+end
+```
+
+```elixir
+lines
+|> Enum.map(scan)
+|> Enum.reduce(0, fn
+  {:corrupt, %{found: ch}}, acc -> acc + points_for.(ch)
+  _, acc -> acc
+end)
+```
