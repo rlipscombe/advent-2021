@@ -167,3 +167,47 @@ Enum.reduce(1..100, {0, values}, fn _, {total, values} ->
   {total + count, values}
 end)
 ```
+
+## Part 2 Exploration
+
+```elixir
+after_step = fn step ->
+  values =
+    Enum.reduce(1..step, values, fn _, values ->
+      {_, values} = Step.step(values, bounds, range)
+      values
+    end)
+
+  render.(values)
+end
+```
+
+```elixir
+after_step.(193)
+```
+
+```elixir
+after_step.(194)
+```
+
+```elixir
+after_step.(195)
+```
+
+## Part 2 Solution
+
+```elixir
+defmodule Part2 do
+  def solve(values, bounds, range, step) when step < 5000 do
+    {count, next} = Step.step(values, bounds, range)
+
+    if count < 100 do
+      solve(next, bounds, range, step + 1)
+    else
+      step
+    end
+  end
+end
+
+Part2.solve(values, bounds, range, 1)
+```
