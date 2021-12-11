@@ -76,7 +76,9 @@ defmodule Step do
   def step(values, bounds, range) do
     values = evolve(values, range)
     values = ripple(values, bounds, [])
-    ground(values)
+    count = Enum.count(values, fn {{_, _}, e} -> e >= 10 end)
+    values = ground(values)
+    {count, values}
   end
 
   defp ground(values) do
@@ -136,13 +138,32 @@ end
 
 ```elixir
 values0 = values
-values1 = Step.step(values0, bounds, range)
+{count, values1} = Step.step(values0, bounds, range)
+IO.puts(count)
 render.(values1)
 ```
 
 ## After step 2
 
 ```elixir
-values2 = Step.step(values1, bounds, range)
+{count, values2} = Step.step(values1, bounds, range)
+IO.puts(count)
 render.(values2)
+```
+
+## After step 3
+
+```elixir
+{count, values3} = Step.step(values2, bounds, range)
+IO.puts(count)
+render.(values3)
+```
+
+## Part 1 Solution
+
+```elixir
+Enum.reduce(1..100, {0, values}, fn _, {total, values} ->
+  {count, values} = Step.step(values, bounds, range)
+  {total + count, values}
+end)
 ```
