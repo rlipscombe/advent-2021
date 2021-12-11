@@ -1,0 +1,123 @@
+# Untitled notebook
+
+## Dependencies
+
+```elixir
+Mix.install([{:kino, github: "livebook-dev/kino"}, {:vega_lite, "~> 0.1.2"}])
+alias VegaLite, as: Vl
+:ok
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Conversion
+
+```elixir
+values =
+  Kino.Input.read(input)
+  |> String.split("\n", trim: true)
+  |> Enum.with_index(fn line, y ->
+    String.to_charlist(line)
+    |> Enum.with_index(fn ch, x -> %{x: x, y: y, energy: ch - ?0} end)
+  end)
+  |> List.flatten()
+  |> Enum.reduce(%{}, fn %{x: x, y: y, energy: e}, acc ->
+    Map.put(acc, {x, y}, e)
+  end)
+```
+
+```elixir
+{{{x0, _}, _}, {{x1, _}, _}} = Enum.min_max_by(values, fn {{x, _}, _} -> x end)
+{{{_, y0}, _}, {{_, y1}, _}} = Enum.min_max_by(values, fn {{_, y}, _} -> y end)
+range = for x <- x0..x1, y <- y0..y1, do: {x, y}
+bounds = {x0..x1, y0..y1}
+```
+
+## Rendering Function
+
+```elixir
+transform = fn values ->
+  Enum.map(values, fn {{x, y}, e} -> %{x: x, y: y, energy: e} end)
+end
+
+render = fn values ->
+  Vl.new(width: 300, height: 300)
+  |> Vl.data(values: transform.(values))
+  |> Vl.mark(:rect)
+  |> Vl.encode_field(:x, "x")
+  |> Vl.encode_field(:y, "y")
+  |> Vl.encode_field(:color, "energy",
+    type: :ordinal,
+    scale: [scheme: "blues", domain: Enum.to_list(0..9)]
+  )
+end
+
+render.(values)
+```
+
+## Steps
+
+```elixir
+defmodule Step do
+  def step(values, bounds, range) do
+    values = evolve(values, range)
+    ripple(values, bounds, [])
+  end
+
+  defp neighbours(_bounds = {x0..x1, y0..y1}, _pos = {x, y}) do
+    all = [
+      {x - 1, y - 1},
+      {x, y - 1},
+      {x + 1, y - 1},
+      {x - 1, y},
+      {x + 1, y},
+      {x - 1, y + 1},
+      {x, y + 1},
+      {x + 1, y + 1}
+    ]
+
+    for {x, y} <- all, x >= x0, x <= x1, y >= y0, y <= y1, do: {x, y}
+  end
+
+  defp evolve(values, range) do
+    Enum.reduce(range, values, fn {x, y}, acc ->
+      Map.update!(acc, {x, y}, fn e -> e + 1 end)
+    end)
+  end
+
+  defp ripple(values, bounds, old_flashes) do
+    flashed =
+      Enum.filter(values, fn {{_, _}, e} -> e >= 10 end)
+      |> Enum.map(fn {{x, y}, _} -> {x, y} end)
+
+    new_flashes = flashed -- old_flashes
+    IO.puts("#{length(new_flashes)}")
+
+    case new_flashes do
+      [] ->
+        values
+
+      flashes ->
+        # It's fine for an octopus to appear in here multiple times, because
+        # it might be the neighbour of multiple flashing octopodes.
+        neighbours = Enum.flat_map(flashes, &neighbours(bounds, &1))
+        values = evolve(values, neighbours)
+        ripple(values, bounds, flashed)
+    end
+  end
+end
+```
+
+```elixir
+values = Step.step(values, bounds, range)
+render.(values)
+```
+
+```elixir
+values = Step.step(values, bounds, range)
+render.(values)
+```
