@@ -116,7 +116,6 @@ defmodule Step do
       |> Enum.map(fn {{x, y}, _} -> {x, y} end)
 
     new_flashes = flashed -- old_flashes
-    IO.puts("#{length(new_flashes)}")
 
     case new_flashes do
       [] ->
@@ -133,12 +132,17 @@ defmodule Step do
 end
 ```
 
-```elixir
-values = Step.step(values, bounds, range)
-render.(values)
-```
+## After step 1
 
 ```elixir
-values = Step.step(values, bounds, range)
-render.(values)
+values0 = values
+values1 = Step.step(values0, bounds, range)
+render.(values1)
+```
+
+## After step 2
+
+```elixir
+values2 = Step.step(values1, bounds, range)
+render.(values2)
 ```
