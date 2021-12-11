@@ -47,13 +47,21 @@ end
 render = fn values ->
   Vl.new(width: 300, height: 300)
   |> Vl.data(values: transform.(values))
-  |> Vl.mark(:rect)
-  |> Vl.encode_field(:x, "x")
-  |> Vl.encode_field(:y, "y")
-  |> Vl.encode_field(:color, "energy",
-    type: :ordinal,
-    scale: [scheme: "blues", domain: Enum.to_list(0..9)]
-  )
+  |> Vl.layers([
+    Vl.new()
+    |> Vl.mark(:rect)
+    |> Vl.encode_field(:x, "x")
+    |> Vl.encode_field(:y, "y")
+    |> Vl.encode_field(:color, "energy",
+      type: :ordinal,
+      scale: [scheme: "blues", domain: Enum.to_list(1..9)]
+    ),
+    Vl.new()
+    |> Vl.mark(:text)
+    |> Vl.encode_field(:x, "x")
+    |> Vl.encode_field(:y, "y")
+    |> Vl.encode_field(:text, "energy")
+  ])
 end
 
 render.(values)
@@ -63,9 +71,22 @@ render.(values)
 
 ```elixir
 defmodule Step do
+  # TODO: new(values, bounds) :: __MODULE__{etc}
+
   def step(values, bounds, range) do
     values = evolve(values, range)
-    ripple(values, bounds, [])
+    values = ripple(values, bounds, [])
+    ground(values)
+  end
+
+  defp ground(values) do
+    Enum.reduce(values, %{}, fn
+      {{x, y}, e}, acc when e >= 10 ->
+        Map.put(acc, {x, y}, 0)
+
+      {{x, y}, e}, acc ->
+        Map.put(acc, {x, y}, e)
+    end)
   end
 
   defp neighbours(_bounds = {x0..x1, y0..y1}, _pos = {x, y}) do
