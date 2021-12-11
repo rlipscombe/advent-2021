@@ -3,7 +3,7 @@
 ## Dependencies
 
 ```elixir
-Mix.install([{:kino, github: "livebook-dev/kino"}, {:vega_lite, "~> 0.1.2"}])
+Mix.install([{:kino, github: "livebook-dev/kino"}, {:vega_lite, "~> 0.1.2"}, {:jason, "~> 1.2"}])
 alias VegaLite, as: Vl
 :ok
 ```
@@ -44,8 +44,8 @@ transform = fn values ->
   Enum.map(values, fn {{x, y}, e} -> %{x: x, y: y, energy: e} end)
 end
 
-render = fn values ->
-  Vl.new(width: 300, height: 300)
+render = fn title, values ->
+  Vl.new(title: title, width: 300, height: 300)
   |> Vl.data(values: transform.(values))
   |> Vl.layers([
     Vl.new()
@@ -54,6 +54,7 @@ render = fn values ->
     |> Vl.encode_field(:y, "y")
     |> Vl.encode_field(:color, "energy",
       type: :ordinal,
+      legend: nil,
       scale: [scheme: "blues", domain: Enum.to_list(1..9)]
     ),
     Vl.new()
@@ -64,7 +65,7 @@ render = fn values ->
   ])
 end
 
-render.(values)
+render.("Step 0", values)
 ```
 
 ## Steps
@@ -140,7 +141,7 @@ end
 values0 = values
 {count, values1} = Step.step(values0, bounds, range)
 IO.puts(count)
-render.(values1)
+render.("After step 1", values1)
 ```
 
 ## After step 2
@@ -148,7 +149,7 @@ render.(values1)
 ```elixir
 {count, values2} = Step.step(values1, bounds, range)
 IO.puts(count)
-render.(values2)
+render.("After step 2", values2)
 ```
 
 ## After step 3
@@ -156,7 +157,7 @@ render.(values2)
 ```elixir
 {count, values3} = Step.step(values2, bounds, range)
 IO.puts(count)
-render.(values3)
+render.("After step 3", values3)
 ```
 
 ## Part 1 Solution
@@ -178,7 +179,7 @@ after_step = fn step ->
       values
     end)
 
-  render.(values)
+  render.("After step #{step}", values)
 end
 ```
 
@@ -197,17 +198,47 @@ after_step.(195)
 ## Part 2 Solution
 
 ```elixir
-defmodule Part2 do
-  def solve(values, bounds, range, step) when step < 5000 do
+defmodule Iterate do
+  def run(values, bounds, range, fun), do: step(values, bounds, range, 1, fun)
+
+  defp step(values, bounds, range, step, fun) when step < 5000 do
     {count, next} = Step.step(values, bounds, range)
 
-    if count < 100 do
-      solve(next, bounds, range, step + 1)
-    else
-      step
+    case fun.(step, count, next) do
+      :cont -> step(next, bounds, range, step + 1, fun)
+      {:halt, result} -> result
     end
   end
 end
+```
 
-Part2.solve(values, bounds, range, 1)
+```elixir
+Iterate.run(values, bounds, range, fn
+  _, count, _ when count < 100 -> :cont
+  step, _, _ -> {:halt, step}
+end)
+```
+
+```elixir
+save = fn step, values ->
+  prefix = Integer.to_string(step) |> String.pad_leading(3, "0")
+  IO.puts("#{prefix}")
+  render.("After step #{step}", values) |> Vl.Export.save!("#{prefix}.png")
+end
+
+Iterate.run(values, bounds, range, fn
+  step, count, values when count < 100 ->
+    save.(step, values)
+    :cont
+
+  step, _, values ->
+    save.(step, values)
+    {:halt, step}
+end)
+```
+
+Run the following to create an animated GIF:
+
+```bash
+convert -loop 0 -delay 3 *.png -delay 200 195.png day11.gif
 ```
