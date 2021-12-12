@@ -19,7 +19,7 @@ connections =
   |> Enum.map(&String.split(&1, "-"))
 ```
 
-## Part 1
+## Exploring
 
 ```elixir
 # Do we need a directed graph? Maybe, if it stops us from re-entering start.
@@ -53,8 +53,10 @@ end
 render.(caves)
 ```
 
+## Part 1
+
 ```elixir
-defmodule Spelunk do
+defmodule Part1 do
   def get_paths(caves) do
     get_paths(caves, MapSet.new(), [], "start") |> List.flatten()
   end
@@ -85,6 +87,53 @@ defmodule Spelunk do
   end
 end
 
-paths = Spelunk.get_paths(caves) |> IO.inspect()
+paths = Part1.get_paths(caves) |> IO.inspect()
+Enum.count(paths)
+```
+
+## Part 2
+
+```elixir
+defmodule Part2 do
+  def get_paths(caves) do
+    get_paths(caves, %{}, [], "start") |> List.flatten()
+  end
+
+  def get_paths(_caves, _visited, path, "end") do
+    List.flatten(["end" | path])
+    |> Enum.reverse()
+    |> List.to_tuple()
+  end
+
+  def get_paths(caves, visited, path, this) do
+    neighbours =
+      Graph.out_neighbors(caves, this)
+      |> Enum.reject(fn n ->
+        Map.get(visited, n, 0) >= 2
+      end)
+
+    # 'visited' keeps a count of how many times we've entered a small cave.
+    visited =
+      if this == String.downcase(this) do
+        Map.update(visited, this, 1, fn v -> v + 1 end)
+      else
+        visited
+      end
+
+    # If we've visited more than one cave more than once, we need to stop.
+    if Enum.count(visited, fn {_, v} -> v > 1 end) > 1 do
+      []
+    else
+      for neighbour <- neighbours, neighbour != "start" do
+        get_paths(caves, visited, [this | path], neighbour)
+      end
+    end
+  end
+end
+```
+
+```elixir
+paths = Part2.get_paths(caves)
+
 Enum.count(paths)
 ```
