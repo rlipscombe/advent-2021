@@ -1,0 +1,90 @@
+# Advent of Code 2021, Day 12
+
+## Dependencies
+
+```elixir
+Mix.install([{:kino, github: "livebook-dev/kino"}, {:libgraph, "~> 0.7"}])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input:")
+```
+
+```elixir
+connections =
+  Kino.Input.read(input)
+  |> String.split("\n", trim: true)
+  |> Enum.map(&String.split(&1, "-"))
+```
+
+## Part 1
+
+```elixir
+# Do we need a directed graph? Maybe, if it stops us from re-entering start.
+caves = Graph.new(type: :undirected)
+
+caves =
+  Enum.reduce(connections, caves, fn [from, to], g ->
+    Graph.add_edge(g, from, to)
+  end)
+```
+
+```elixir
+render = fn g ->
+  tmp = Path.join(System.tmp_dir!(), :crypto.strong_rand_bytes(10) |> Base.encode32())
+
+  {:ok, dot} = Graph.to_dot(g)
+  File.write!(tmp <> ".dot", dot)
+  {"", 0} = System.cmd("dot", ["-T", "png", tmp <> ".dot", "-o", tmp <> ".png"])
+
+  png_data = File.read!(tmp <> ".png")
+  image = Kino.Image.new(png_data, :png)
+
+  File.rm!(tmp <> ".dot")
+  File.rm!(tmp <> ".png")
+
+  image
+end
+```
+
+```elixir
+render.(caves)
+```
+
+```elixir
+defmodule Spelunk do
+  def get_paths(caves) do
+    get_paths(caves, MapSet.new(), [], "start") |> List.flatten()
+  end
+
+  def get_paths(_caves, _visited, path, "end") do
+    List.flatten(["end" | path])
+    |> Enum.reverse()
+    |> List.to_tuple()
+  end
+
+  def get_paths(caves, visited, path, this) do
+    # 'visited' keeps only the small caves; we can re-enter a
+    # large cave if we want.
+    neighbours =
+      Graph.out_neighbors(caves, this)
+      |> Enum.reject(&MapSet.member?(visited, &1))
+
+    visited =
+      if this == String.downcase(this) do
+        MapSet.put(visited, this)
+      else
+        visited
+      end
+
+    for neighbour <- neighbours do
+      get_paths(caves, visited, [this | path], neighbour)
+    end
+  end
+end
+
+paths = Spelunk.get_paths(caves) |> IO.inspect()
+Enum.count(paths)
+```
