@@ -1,9 +1,14 @@
-# Untitled notebook
+# Advent of Code 2021, Day 11
 
 ## Dependencies
 
 ```elixir
-Mix.install([{:kino, github: "livebook-dev/kino"}, {:vega_lite, "~> 0.1.2"}, {:jason, "~> 1.2"}])
+Mix.install([
+  {:kino, github: "livebook-dev/kino"},
+  {:vega_lite, "~> 0.1.2"},
+  {:jason, "~> 1.2"}
+])
+
 alias VegaLite, as: Vl
 :ok
 ```
