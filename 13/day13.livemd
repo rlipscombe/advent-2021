@@ -1,0 +1,60 @@
+# Advent of Code 2021, Day 13
+
+## Dependencies
+
+```elixir
+Mix.install([
+  {:kino, github: "livebook-dev/kino"},
+  {:vega_lite, "~> 0.1.2"},
+  {:jason, "~> 1.2"}
+])
+
+alias VegaLite, as: Vl
+:ok
+```
+
+## Puzzle Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input:")
+```
+
+```elixir
+[dots, instructions] =
+  Kino.Input.read(input)
+  |> String.split("\n\n", trim: true)
+
+dots =
+  dots
+  |> String.split("\n", trim: true)
+  |> Enum.map(fn x -> String.split(x, ",") |> Enum.map(&String.to_integer/1) end)
+
+instructions = instructions |> String.split("\n", trim: true)
+
+{[x0, _], [x1, _]} = Enum.min_max_by(dots, fn [x, _] -> x end)
+{[_, y0], [_, y1]} = Enum.min_max_by(dots, fn [_, y] -> y end)
+```
+
+```elixir
+transform = fn dots ->
+  Enum.map(dots, fn [x, y] -> %{x: x, y: y} end)
+end
+
+render = fn title, values ->
+  Vl.new(title: title, width: 300, height: 300)
+  |> Vl.data(values: transform.(values))
+  |> Vl.layers([
+    Vl.new()
+    |> Vl.mark(:rect)
+    |> Vl.encode_field(:x, "x", scale: [domain: Enum.to_list(x0..x1)])
+    |> Vl.encode_field(:y, "y", scale: [domain: Enum.to_list(y0..y1)])
+    |> Vl.encode_field(:color, "#",
+      type: :ordinal,
+      legend: nil,
+      scale: [scheme: "teals"]
+    )
+  ])
+end
+
+render.("Start", dots)
+```
