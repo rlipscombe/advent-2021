@@ -28,20 +28,37 @@ dots =
   dots
   |> String.split("\n", trim: true)
   |> Enum.map(fn x -> String.split(x, ",") |> Enum.map(&String.to_integer/1) end)
-
-instructions = instructions |> String.split("\n", trim: true)
-
-{[x0, _], [x1, _]} = Enum.min_max_by(dots, fn [x, _] -> x end)
-{[_, y0], [_, y1]} = Enum.min_max_by(dots, fn [_, y] -> y end)
 ```
+
+```elixir
+instructions =
+  instructions
+  |> String.split("\n", trim: true)
+  |> Enum.map(fn
+    "fold along x=" <> fx ->
+      {:fold_along_x, String.to_integer(fx)}
+
+    "fold along y=" <> fy ->
+      {:fold_along_y, String.to_integer(fy)}
+  end)
+```
+
+## Visualisation
 
 ```elixir
 transform = fn dots ->
   Enum.map(dots, fn [x, y] -> %{x: x, y: y} end)
 end
 
-render = fn title, values ->
-  Vl.new(title: title, width: 300, height: 300)
+render = fn values ->
+  {[x0, _], [x1, _]} = Enum.min_max_by(values, fn [x, _] -> x end)
+  {[_, y0], [_, y1]} = Enum.min_max_by(values, fn [_, y] -> y end)
+  x0 = min(x0, y0)
+  y0 = x0
+  x1 = max(x1, y1)
+  y1 = x1
+
+  Vl.new(width: 300, height: 300)
   |> Vl.data(values: transform.(values))
   |> Vl.layers([
     Vl.new()
@@ -56,5 +73,56 @@ render = fn title, values ->
   ])
 end
 
-render.("Start", dots)
+render.(dots)
+```
+
+## Folds
+
+```elixir
+# Folding along y = 7 means finding all the dots that are >= 7 and changing their
+# y-coord as follows:  y = fy - (y - fy)
+fold_along_x = fn dots, fx ->
+  dots
+  |> Enum.map(fn
+    [x, y] when x < fx -> [x, y]
+    [x, y] -> [fx - (x - fx), y]
+  end)
+  |> Enum.uniq()
+end
+
+fold_along_y = fn dots, fy ->
+  dots
+  |> Enum.map(fn
+    [x, y] when y < fy -> [x, y]
+    [x, y] -> [x, fy - (y - fy)]
+  end)
+  |> Enum.uniq()
+end
+
+fold = fn
+  dots, {:fold_along_x, fx} -> fold_along_x.(dots, fx)
+  dots, {:fold_along_y, fy} -> fold_along_y.(dots, fy)
+end
+```
+
+## Part 1
+
+```elixir
+[instr | _] = instructions
+dots = dots |> fold.(instr)
+render.(dots)
+```
+
+```elixir
+Enum.count(dots)
+```
+
+## Part 2
+
+```elixir
+dots = Enum.reduce(instructions, dots, fn instr, dots -> fold.(dots, instr) end)
+```
+
+```elixir
+render.(dots)
 ```
