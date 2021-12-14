@@ -5,8 +5,15 @@
 ```elixir
 Mix.install([
   {:kino, github: "livebook-dev/kino"},
-  {:size, "~> 0.1.0"}
+  {:size, "~> 0.1.0"},
+  {:vega_lite, "~> 0.1.2"},
+  {:jason, "~> 1.2"}
 ])
+
+alias VegaLite, as: Vl
+# [cmd | args] = "npm install vega vega-lite canvas" |> String.split(" ", trim: true)
+# {_, 0} = System.cmd(cmd, args)
+:ok
 ```
 
 ## Puzzle Input
@@ -339,4 +346,37 @@ counts = count_population.(final)
 counts = apply_steps.(40, template, rules) |> count_population.()
 {{_, min}, {_, max}} = Enum.min_max_by(counts, fn {_ch, count} -> count end)
 max - min
+```
+
+```elixir
+transform_pair_counts = fn pair_counts ->
+  count_population.(pair_counts)
+  |> Enum.map(fn {k, v} -> %{element: List.to_string(k), count: v} end)
+end
+
+Enum.reduce(1..40, to_pair_counts.(template), fn step, pair_counts ->
+  vl =
+    Vl.new(title: "Step #{step}", width: 700, height: 400)
+    |> Vl.data(values: transform_pair_counts.(pair_counts))
+    |> Vl.encode_field(:y, "element")
+    |> Vl.encode_field(:x, "count", type: :quantitative)
+    |> Vl.layers([
+      Vl.new()
+      |> Vl.mark(:bar),
+      Vl.new()
+      |> Vl.mark(:text, align: :left, baseline: :middle, dx: 3)
+      |> Vl.encode_field(:text, "count", type: :quantitative, format: "r")
+    ])
+
+  prefix = Integer.to_string(step) |> String.pad_leading(2, "0")
+  Vl.Export.save!(vl, "#{prefix}.png")
+
+  evolve_pair_counts.(pair_counts, rules)
+end)
+
+:ok
+```
+
+```bash
+convert -loop 0 -delay 3 *.png -delay 200 40.png day14.gif
 ```
