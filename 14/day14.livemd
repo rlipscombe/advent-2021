@@ -4,7 +4,8 @@
 
 ```elixir
 Mix.install([
-  {:kino, github: "livebook-dev/kino"}
+  {:kino, github: "livebook-dev/kino"},
+  {:size, "~> 0.1.0"}
 ])
 ```
 
@@ -59,4 +60,51 @@ polymer =
 
 {{_, min}, {_, max}} = polymer |> Enum.frequencies() |> Enum.min_max_by(fn {_k, v} -> v end)
 max - min
+```
+
+## Aside: Growth
+
+This polymer grows quickly.
+
+```elixir
+polymer =
+  Enum.reduce(1..10, template, fn n, template ->
+    next = step.(template, rules)
+    IO.puts("Step #{n}: #{length(next)} (x #{length(next) / length(template)})")
+    next
+  end)
+```
+
+It basically doubles in length each time, so after 40 steps, it'll be $2^{40}$ times as large.
+
+```elixir
+(round(:math.pow(2, 40)) * length(template)) |> Size.humanize!(spacer: "")
+```
+
+## Part 2
+
+After 40 steps, the example given results in more than 2TB of 'B', alone, so we'll need to be a bit smarter...
+
+I'm not that smart (also suffering from Covid), so I looked on Reddit: **Lanternfish**. That is: Day 6.
+
+In Day 6, we were tracking a population of lanternfish, and ended up tracking them by age buckets, rather than by tracking the entire population of individuals.
+
+My hunch is that we'll need to keep track of the counts of *pairs*. That is:
+
+* `NNCB` is `NN`, `NC`, `CB`.
+* At step 1: `NN => C` => `NC`,`CN`, `NC => B` => `NB`,`BC`, `CB => H` => `CH`,`HB`.
+* At step 2: `NC`,`CN`,`NB`,`BC`,`CH`,`HB`, and so on.
+
+```elixir
+evolve = fn template, rules ->
+  pairs = template |> Enum.chunk_every(2, 1, :discard)
+
+  pairs
+  |> Enum.reduce([], fn pair = [fst, snd], results ->
+    [ch] = Map.fetch!(rules, pair)
+    [[ch, snd], [fst, ch] | results]
+  end)
+end
+
+evolve.('NNCB', %{'CB' => 'H', 'NN' => 'C', 'NC' => 'B'}) |> Enum.reverse()
 ```
