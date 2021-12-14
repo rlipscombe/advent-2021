@@ -1,0 +1,62 @@
+# Advent of Code 2021, Day 14: Extended Polymerization
+
+## Dependencies
+
+```elixir
+Mix.install([
+  {:kino, github: "livebook-dev/kino"}
+])
+```
+
+## Puzzle Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input:")
+```
+
+```elixir
+[template, rules] =
+  Kino.Input.read(input)
+  |> String.split("\n\n", trim: true)
+
+template = String.to_charlist(template)
+
+rules =
+  rules
+  |> String.split("\n", trim: true)
+  |> Enum.map(&String.split(&1, " -> ", trim: true))
+  |> Enum.reduce(%{}, fn [lhs, rhs], map ->
+    Map.put(map, String.to_charlist(lhs), String.to_charlist(rhs))
+  end)
+```
+
+## Part 1
+
+```elixir
+step = fn template, rules ->
+  # Don't discard the last one; we'll need that.
+  pairs = template |> Enum.chunk_every(2, 1)
+
+  Enum.reduce(pairs, [], fn
+    pair = [fst, _snd], result ->
+      element = Map.fetch!(rules, pair)
+      [result, fst, element]
+
+    [last], result ->
+      [result, last] |> List.flatten()
+  end)
+end
+
+'NCNBCHB' = step.('NNCB', %{'CB' => 'H', 'NN' => 'C', 'NC' => 'B'})
+:pass
+```
+
+```elixir
+polymer =
+  Enum.reduce(1..10, template, fn _, template ->
+    step.(template, rules)
+  end)
+
+{{_, min}, {_, max}} = polymer |> Enum.frequencies() |> Enum.min_max_by(fn {_k, v} -> v end)
+max - min
+```
