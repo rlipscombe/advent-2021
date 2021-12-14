@@ -31,6 +31,33 @@ rules =
   end)
 ```
 
+## Example Input
+
+```elixir
+example_template = 'NNCB'
+```
+
+```elixir
+example_rules = %{
+  'CH' => 'B',
+  'HH' => 'N',
+  'CB' => 'H',
+  'NH' => 'C',
+  'HB' => 'C',
+  'HC' => 'B',
+  'HN' => 'C',
+  'NN' => 'C',
+  'BH' => 'H',
+  'NC' => 'B',
+  'NB' => 'B',
+  'BN' => 'B',
+  'BB' => 'N',
+  'BC' => 'B',
+  'CC' => 'N',
+  'CN' => 'C'
+}
+```
+
 ## Part 1
 
 ```elixir
@@ -48,7 +75,13 @@ step = fn template, rules ->
   end)
 end
 
-'NCNBCHB' = step.('NNCB', %{'CB' => 'H', 'NN' => 'C', 'NC' => 'B'})
+'NCNBCHB' = step.('NNCB', example_rules)
+'NBCCNBBBCBHCB' = step.('NCNBCHB', example_rules)
+'NBBBCNCCNBBNBNBBCHBHHBCHB' = step.('NBCCNBBBCBHCB', example_rules)
+
+'NBBNBNBBCCNBCNCCNBBNBBNBBBNBBNBBCBHCBHHNHCBBCBHCB' =
+  step.('NBBBCNCCNBBNBNBBCHBHHBCHB', example_rules)
+
 :pass
 ```
 
@@ -57,7 +90,9 @@ polymer =
   Enum.reduce(1..10, template, fn _, template ->
     step.(template, rules)
   end)
+```
 
+```elixir
 {{_, min}, {_, max}} = polymer |> Enum.frequencies() |> Enum.min_max_by(fn {_k, v} -> v end)
 max - min
 ```
@@ -106,5 +141,202 @@ evolve = fn template, rules ->
   end)
 end
 
-evolve.('NNCB', %{'CB' => 'H', 'NN' => 'C', 'NC' => 'B'}) |> Enum.reverse()
+['NC', 'CN', 'NB', 'BC', 'CH', 'HB'] = evolve.(example_template, example_rules) |> Enum.reverse()
+:pass
+```
+
+But we want to track populations, so let's start there:
+
+```elixir
+to_pair_counts = fn template = [fst | _] ->
+  Enum.chunk_every(template, 2, 1)
+  |> Enum.frequencies()
+  |> Map.update([fst], 1, fn x -> x + 1 end)
+end
+
+%{'CB' => 1, 'NC' => 1, 'NN' => 1, 'N' => 1, 'B' => 1} = to_pair_counts.('NNCB')
+# NB BB CN CC NB BN BN BB CH BH HB CH B
+# N BB BC NC CN BB NB NB BC HB HH BC HB
+%{
+  'B' => 1,
+  'BB' => 4,
+  'BC' => 3,
+  'BH' => 1,
+  'BN' => 2,
+  'CC' => 1,
+  'CH' => 2,
+  'CN' => 2,
+  'HB' => 3,
+  'HH' => 1,
+  'N' => 1,
+  'NB' => 4,
+  'NC' => 1
+} = to_pair_counts.('NBBBCNCCNBBNBNBBCHBHHBCHB')
+
+%{'A' => 2, 'AB' => 1, 'BA' => 1, 'BB' => 1} = to_pair_counts.('ABBA')
+:pass
+```
+
+```elixir
+# There's a bug in here somewhere...
+evolve_pair_counts = fn pair_counts, rules ->
+  pair_counts
+  |> Enum.reduce(%{}, fn
+    {_pair = [last], count}, results ->
+      Map.put(results, [last], count)
+
+    {pair = [fst, snd], count}, results ->
+      [ch] = Map.fetch!(rules, pair)
+      # IO.puts("#{pair}:#{[ch]} -> #{[fst, ch]}, #{[ch, snd]} (#{count})")
+
+      results
+      |> Map.update([fst, ch], count, fn x -> x + count end)
+      |> Map.update([ch, snd], count, fn x -> x + count end)
+  end)
+end
+
+# NCNBCHB
+%{'N' => 1, 'NC' => 1, 'CN' => 1, 'NB' => 1, 'BC' => 1, 'CH' => 1, 'HB' => 1, 'B' => 1} =
+  evolve_pair_counts.(
+    to_pair_counts.('NNCB'),
+    example_rules
+  )
+
+:pass
+```
+
+```elixir
+'NBB' = step.('NB', example_rules)
+'NBBNBNB' = step.('NBBB', example_rules)
+:pass
+```
+
+```elixir
+next = to_pair_counts.('NBBB')
+next = evolve_pair_counts.(next, example_rules)
+^next = expected = to_pair_counts.('NBBNBNB')
+
+:pass
+```
+
+```elixir
+next = to_pair_counts.('NNCB')
+next = evolve_pair_counts.(next, example_rules)
+^next = expected = to_pair_counts.('NCNBCHB')
+
+next = to_pair_counts.('NCNBCHB')
+next = evolve_pair_counts.(next, example_rules)
+^next = expected = to_pair_counts.('NBCCNBBBCBHCB')
+
+next = to_pair_counts.('NBCCNBBBCBHCB')
+next = evolve_pair_counts.(next, example_rules)
+^next = expected = to_pair_counts.('NBBBCNCCNBBNBNBBCHBHHBCHB')
+
+next = to_pair_counts.('NBBBCNCCNBBNBNBBCHBHHBCHB')
+next = evolve_pair_counts.(next, example_rules)
+^next = expected = to_pair_counts.('NBBNBNBBCCNBCNCCNBBNBBNBBBNBBNBBCBHCBHHNHCBBCBHCB')
+
+:pass
+```
+
+```elixir
+get_length = fn counts ->
+  Enum.reduce(counts, 0, fn {_k, v}, acc -> acc + v end)
+end
+
+7 = get_length.(%{'B' => 2, 'C' => 2, 'H' => 1, 'N' => 2})
+:pass
+```
+
+```elixir
+get_length_from_pair_counts = fn pair_counts ->
+  Enum.reduce(pair_counts, 0, fn
+    {[_, _], count}, acc -> acc + count * 2
+    {[_], count}, acc -> acc + count
+  end) - 1
+end
+```
+
+```elixir
+evolve_pair_counts.(to_pair_counts.('NNCB'), example_rules)
+```
+
+```elixir
+apply_steps = fn steps, template, rules ->
+  pair_counts = to_pair_counts.(template)
+
+  Enum.reduce(1..steps, pair_counts, fn
+    _step, pair_counts ->
+      # length = get_length_from_pair_counts.(pair_counts)
+      # IO.puts("Step #{step}: #{length}")
+      evolve_pair_counts.(pair_counts, rules)
+  end)
+end
+```
+
+```elixir
+count_population = fn pair_counts ->
+  Enum.reduce(pair_counts, %{}, fn
+    {[last], count}, results ->
+      results |> Map.update([last], count, fn x -> x + count end)
+
+    {[fst, snd], count}, results ->
+      results
+      |> Map.update([fst], count, fn x -> x + count end)
+      |> Map.update([snd], count, fn x -> x + count end)
+  end)
+  |> Enum.map(fn {k, v} -> {k, div(v, 2)} end)
+  |> Enum.into(%{})
+end
+
+%{'B' => 2, 'C' => 2, 'H' => 1, 'N' => 2} =
+  count_population.(%{
+    'N' => 1,
+    'NC' => 1,
+    'CN' => 1,
+    'NB' => 1,
+    'BC' => 1,
+    'CH' => 1,
+    'HB' => 1,
+    'B' => 1
+  })
+
+%{'A' => 2, 'B' => 2} = count_population.(%{'A' => 2, 'AB' => 1, 'BA' => 1, 'BB' => 1})
+:pass
+```
+
+```elixir
+expected_population = %{'B' => 1749, 'C' => 298, 'H' => 161, 'N' => 865}
+3073 = 1749 + 298 + 161 + 865
+example_after_10 = apply_steps.(10, 'NNCB', example_rules)
+^expected_population = example_after_10 |> count_population.()
+:pass
+```
+
+```elixir
+counts = apply_steps.(40, example_template, example_rules) |> count_population.()
+
+{{'H', min = 3_849_876_073}, {'B', max = 2_192_039_569_602}} =
+  Enum.min_max_by(counts, fn {_, count} -> count end)
+
+2_188_189_693_529 = max - min
+:pass
+```
+
+```elixir
+polymer |> Enum.frequencies() |> Enum.min_max_by(fn {_, count} -> count end)
+```
+
+```elixir
+final = apply_steps.(10, template, rules)
+counts = count_population.(final)
+{{_, min}, {_, max}} = Enum.min_max_by(counts, fn {_ch, count} -> count end)
+2194 = max - min
+:pass
+```
+
+```elixir
+counts = apply_steps.(40, template, rules) |> count_population.()
+{{_, min}, {_, max}} = Enum.min_max_by(counts, fn {_ch, count} -> count end)
+max - min
 ```
