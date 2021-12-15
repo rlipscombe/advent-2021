@@ -218,7 +218,7 @@ larger = embiggen.(input, 5, 5)
 ```
 
 ```elixir
-render_heatmap.(larger, [])
+# render_heatmap.(larger, [])
 ```
 
 ```elixir
@@ -236,7 +236,28 @@ path = dijkstra.(graph, larger)
 ```
 
 ```elixir
-render_heatmap.(larger, path)
+render_path = fn values, path ->
+  path_data =
+    Enum.reduce(path, [], fn {x, y}, acc ->
+      risk = Map.fetch!(values, {x, y})
+      [%{x: x, y: y, risk: risk} | acc]
+    end)
+
+  path_layer =
+    Vl.new()
+    |> Vl.mark(:point, size: 500, shape: :circle, color: "#ff00ff")
+    |> Vl.data(values: path_data)
+    |> Vl.encode_field(:x, "x")
+    |> Vl.encode_field(:y, "y")
+
+  Vl.new(width: 600, height: 600)
+  |> Vl.layers([path_layer])
+end
+```
+
+```elixir
+# render_heatmap.(larger, path)
+render_path.(larger, path)
 ```
 
 ```elixir
