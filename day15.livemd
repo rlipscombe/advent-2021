@@ -45,16 +45,19 @@ input =
 ## Preview Visualization
 
 ```elixir
-render_heatmap = fn values ->
-  transform = fn values ->
+render_heatmap = fn values, path ->
+  heatmap_values =
     Enum.map(values, fn {{x, y}, risk} ->
       %{x: x, y: y, risk: risk}
     end)
-  end
 
-  Vl.new(width: 400, height: 400)
-  |> Vl.data(values: transform.(values))
-  |> Vl.layers([
+  path_data =
+    Enum.reduce(path, [], fn {x, y}, acc ->
+      risk = Map.fetch!(values, {x, y})
+      [%{x: x, y: y, risk: risk} | acc]
+    end)
+
+  color_layer =
     Vl.new()
     |> Vl.mark(:rect)
     |> Vl.encode_field(:x, "x")
@@ -63,18 +66,31 @@ render_heatmap = fn values ->
       type: :ordinal,
       legend: nil,
       scale: [scheme: "lightmulti", domain: Enum.to_list(1..9)]
-    ),
+    )
+
+  text_layer =
     Vl.new()
     |> Vl.mark(:text)
     |> Vl.encode_field(:x, "x")
     |> Vl.encode_field(:y, "y")
     |> Vl.encode_field(:text, "risk")
-  ])
+
+  path_layer =
+    Vl.new()
+    |> Vl.mark(:point, size: 500, shape: :circle, color: "#ff00ff")
+    |> Vl.data(values: path_data)
+    |> Vl.encode_field(:x, "x")
+    |> Vl.encode_field(:y, "y")
+
+  Vl.new(width: 400, height: 400)
+  |> Vl.data(values: heatmap_values)
+  |> Vl.layers([color_layer, text_layer, path_layer])
 end
 ```
 
 ```elixir
-render_heatmap.(input)
+path = []
+render_heatmap.(input, path)
 ```
 
 ## Graph
@@ -140,11 +156,22 @@ end
 ```
 
 ```elixir
-render_graph.(graph)
+# render_graph.(graph)
 ```
 
 ## Path finding
 
 ```elixir
-Graph.dijkstra(graph, {0, 0}, {max_x, max_y})
+path = Graph.dijkstra(graph, {0, 0}, {max_x, max_y})
+```
+
+```elixir
+render_heatmap.(input, path)
+```
+
+```elixir
+Enum.reduce(tl(path), 0, fn {x, y}, total_risk ->
+  risk = Map.fetch!(input, {x, y})
+  total_risk + risk
+end)
 ```
