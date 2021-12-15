@@ -82,7 +82,7 @@ render_heatmap = fn values, path ->
     |> Vl.encode_field(:x, "x")
     |> Vl.encode_field(:y, "y")
 
-  Vl.new(width: 400, height: 400)
+  Vl.new(width: 600, height: 600)
   |> Vl.data(values: heatmap_values)
   |> Vl.layers([color_layer, text_layer, path_layer])
 end
@@ -102,39 +102,48 @@ Nodes are easy. It'll need to be a digraph, because risk only counts when enteri
 For each node, edges _to_ that node have `weight: risk`.
 
 ```elixir
-graph = Graph.new(type: :directed)
+build_graph = fn input ->
+  {{{min_x, _}, _}, {{max_x, _}, _}} = input |> Enum.min_max_by(fn {{x, _y}, _} -> x end)
+  {{{_, min_y}, _}, {{_, max_y}, _}} = input |> Enum.min_max_by(fn {{_x, y}, _} -> y end)
 
-graph =
-  Enum.reduce(input, graph, fn {{x, y}, risk}, graph ->
-    Graph.add_vertex(graph, {x, y}, risk: risk)
-  end)
+  graph = Graph.new(type: :directed)
 
-graph =
-  Enum.reduce(input, graph, fn {v = {x, y}, risk}, graph ->
-    # Find the neighbours of this node. For each one add an edge pointing _to_
-    # this node.
-    graph =
-      if x > 0,
-        do: Graph.add_edge(graph, _west = {x - 1, y}, v, weight: risk),
-        else: graph
+  graph =
+    Enum.reduce(input, graph, fn {{x, y}, risk}, graph ->
+      Graph.add_vertex(graph, {x, y}, risk: risk)
+    end)
 
-    graph =
-      if y > 0,
-        do: Graph.add_edge(graph, _north = {x, y - 1}, v, weight: risk),
-        else: graph
+  graph =
+    Enum.reduce(input, graph, fn {v = {x, y}, risk}, graph ->
+      # Find the neighbours of this node. For each one add an edge pointing _to_
+      # this node.
+      graph =
+        if x > 0,
+          do: Graph.add_edge(graph, _west = {x - 1, y}, v, weight: risk),
+          else: graph
 
-    graph =
-      if x < max_x,
-        do: Graph.add_edge(graph, _east = {x + 1, y}, v, weight: risk),
-        else: graph
+      graph =
+        if y > 0,
+          do: Graph.add_edge(graph, _north = {x, y - 1}, v, weight: risk),
+          else: graph
 
-    graph =
-      if y < max_y,
-        do: Graph.add_edge(graph, _south = {x, y + 1}, v, weight: risk),
-        else: graph
+      graph =
+        if x < max_x,
+          do: Graph.add_edge(graph, _east = {x + 1, y}, v, weight: risk),
+          else: graph
 
-    graph
-  end)
+      graph =
+        if y < max_y,
+          do: Graph.add_edge(graph, _south = {x, y + 1}, v, weight: risk),
+          else: graph
+
+      graph
+    end)
+
+  graph
+end
+
+graph = build_graph.(input)
 ```
 
 ```elixir
@@ -174,4 +183,69 @@ Enum.reduce(tl(path), 0, fn {x, y}, total_risk ->
   risk = Map.fetch!(input, {x, y})
   total_risk + risk
 end)
+```
+
+## Part 2
+
+```elixir
+embiggen = fn input, xs, ys when xs > 1 and ys > 1 ->
+  input =
+    Enum.reduce(1..(xs - 1), input, fn dup_x, input ->
+      Enum.reduce(input, input, fn {{x, y}, risk}, input ->
+        # This works because we're actually copying the previous copy.
+        new_x = x + max_x + 1
+        new_y = y
+        new_risk = rem(risk, 9) + 1
+        Map.put(input, {new_x, new_y}, new_risk)
+      end)
+    end)
+
+  input =
+    Enum.reduce(1..(ys - 1), input, fn dup_y, input ->
+      Enum.reduce(input, input, fn {{x, y}, risk}, input ->
+        # This works because we're actually copying the previous copy.
+        new_x = x
+        new_y = y + max_y + 1
+        new_risk = rem(risk, 9) + 1
+        Map.put(input, {new_x, new_y}, new_risk)
+      end)
+    end)
+
+  input
+end
+
+larger = embiggen.(input, 5, 5)
+```
+
+```elixir
+render_heatmap.(larger, [])
+```
+
+```elixir
+graph = build_graph.(larger)
+```
+
+```elixir
+dijkstra = fn graph, input ->
+  {{{min_x, _}, _}, {{max_x, _}, _}} = input |> Enum.min_max_by(fn {{x, _y}, _} -> x end)
+  {{{_, min_y}, _}, {{_, max_y}, _}} = input |> Enum.min_max_by(fn {{_x, y}, _} -> y end)
+  Graph.dijkstra(graph, {0, 0}, {max_x, max_y})
+end
+
+path = dijkstra.(graph, larger)
+```
+
+```elixir
+render_heatmap.(larger, path)
+```
+
+```elixir
+total_risk = fn input, path ->
+  Enum.reduce(tl(path), 0, fn {x, y}, total_risk ->
+    risk = Map.fetch!(input, {x, y})
+    total_risk + risk
+  end)
+end
+
+total_risk.(larger, path)
 ```
