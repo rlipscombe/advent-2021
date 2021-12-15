@@ -1,0 +1,150 @@
+# Advent of Code 2021, Day 15: Chiton
+
+## Dependencies
+
+```elixir
+Mix.install(
+  [
+    {:kino, github: "livebook-dev/kino"},
+    {:libgraph, path: "/home/roger/Source/rlipscombe/libgraph"},
+    {:vega_lite, "~> 0.1.2"}
+  ],
+  force: true
+)
+
+alias VegaLite, as: Vl
+:ok
+```
+
+## Puzzle Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input:")
+```
+
+```elixir
+input =
+  Kino.Input.read(input)
+  |> String.split("\n", trim: true)
+  |> Enum.with_index(fn line, y ->
+    String.to_charlist(line)
+    |> Enum.with_index(fn ch, x ->
+      {{x, y}, ch - ?0}
+    end)
+  end)
+  |> List.flatten()
+  |> Enum.into(%{})
+```
+
+```elixir
+{{{min_x, _}, _}, {{max_x, _}, _}} = input |> Enum.min_max_by(fn {{x, _y}, _} -> x end)
+{{{_, min_y}, _}, {{_, max_y}, _}} = input |> Enum.min_max_by(fn {{_x, y}, _} -> y end)
+[{min_x, min_y}, {max_x, max_y}]
+```
+
+## Preview Visualization
+
+```elixir
+render_heatmap = fn values ->
+  transform = fn values ->
+    Enum.map(values, fn {{x, y}, risk} ->
+      %{x: x, y: y, risk: risk}
+    end)
+  end
+
+  Vl.new(width: 400, height: 400)
+  |> Vl.data(values: transform.(values))
+  |> Vl.layers([
+    Vl.new()
+    |> Vl.mark(:rect)
+    |> Vl.encode_field(:x, "x")
+    |> Vl.encode_field(:y, "y")
+    |> Vl.encode_field(:color, "risk",
+      type: :ordinal,
+      legend: nil,
+      scale: [scheme: "lightmulti", domain: Enum.to_list(1..9)]
+    ),
+    Vl.new()
+    |> Vl.mark(:text)
+    |> Vl.encode_field(:x, "x")
+    |> Vl.encode_field(:y, "y")
+    |> Vl.encode_field(:text, "risk")
+  ])
+end
+```
+
+```elixir
+render_heatmap.(input)
+```
+
+## Graph
+
+Let's stick the whole thing into `libgraph`.
+
+Nodes are easy. It'll need to be a digraph, because risk only counts when entering a position.
+
+For each node, edges _to_ that node have `weight: risk`.
+
+```elixir
+graph = Graph.new(type: :directed)
+
+graph =
+  Enum.reduce(input, graph, fn {{x, y}, risk}, graph ->
+    Graph.add_vertex(graph, {x, y}, risk: risk)
+  end)
+
+graph =
+  Enum.reduce(input, graph, fn {v = {x, y}, risk}, graph ->
+    # Find the neighbours of this node. For each one add an edge pointing _to_
+    # this node.
+    graph =
+      if x > 0,
+        do: Graph.add_edge(graph, _west = {x - 1, y}, v, weight: risk),
+        else: graph
+
+    graph =
+      if y > 0,
+        do: Graph.add_edge(graph, _north = {x, y - 1}, v, weight: risk),
+        else: graph
+
+    graph =
+      if x < max_x,
+        do: Graph.add_edge(graph, _east = {x + 1, y}, v, weight: risk),
+        else: graph
+
+    graph =
+      if y < max_y,
+        do: Graph.add_edge(graph, _south = {x, y + 1}, v, weight: risk),
+        else: graph
+
+    graph
+  end)
+```
+
+```elixir
+render_graph = fn graph ->
+  tmp = Path.join(System.tmp_dir!(), :crypto.strong_rand_bytes(10) |> Base.encode32())
+
+  {:ok, dot} = Graph.to_dot(graph)
+  File.write!(tmp <> ".dot", dot)
+  {"", 0} = System.cmd("dot", ["-T", "png", tmp <> ".dot", "-o", tmp <> ".png"])
+
+  png_data = File.read!(tmp <> ".png")
+  image = Kino.Image.new(png_data, :png)
+
+  # File.rm!(tmp <> ".dot")
+  # File.rm!(tmp <> ".png")
+
+  image
+end
+```
+
+```elixir
+render_graph.(graph)
+```
+
+## Path finding
+
+```elixir
+Graph.dijkstra(graph, {0, 0}, {max_x, max_y})
+```
