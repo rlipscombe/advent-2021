@@ -1,0 +1,198 @@
+# Advent of Code 2021, Day 16: Packet Decoder
+
+## Dependencies
+
+```elixir
+Mix.install([
+  {:kino, github: "livebook-dev/kino"}
+])
+```
+
+## Puzzle Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input:")
+```
+
+```elixir
+input =
+  Kino.Input.read(input)
+  |> String.trim()
+  |> Base.decode16!()
+```
+
+```elixir
+defmodule Parser do
+  use Bitwise
+
+  def parse_hex(str), do: parse_bitstring(Base.decode16!(str))
+
+  @type_literal 4
+
+  def parse_bitstring(<<version::3, @type_literal::3, literal::bitstring>>) do
+    parse_literal(version, literal, 0)
+  end
+
+  @mode_bits 0
+  @mode_packets 1
+
+  def parse_bitstring(
+        <<version::3, type::3, @mode_bits::1, length::15, packets::bitstring-size(length),
+          rest::bitstring>>
+      ) do
+    {packets, more} = parse_packets_bits(packets)
+
+    {%{operator: %{version: version, type: type, packets: packets}},
+     <<more::bitstring, rest::bitstring>>}
+  end
+
+  def parse_bitstring(<<version::3, type::3, @mode_packets::1, count::11, packets::bitstring>>) do
+    {packets, more} = parse_packets_count(count, packets)
+    {%{operator: %{version: version, type: type, packets: packets}}, more}
+  end
+
+  defp parse_packets_bits(bitstring), do: parse_packets_bits(bitstring, [])
+
+  defp parse_packets_bits(<<>>, acc), do: {Enum.reverse(acc), <<>>}
+
+  defp parse_packets_bits(bitstring, acc) when is_bitstring(bitstring) do
+    {pkt, more} = parse_bitstring(bitstring)
+    parse_packets_bits(more, [pkt | acc])
+  end
+
+  defp parse_packets_count(count, bitstring), do: parse_packets_count(count, bitstring, [])
+
+  defp parse_packets_count(_count = 0, bitstring, acc), do: {Enum.reverse(acc), bitstring}
+
+  defp parse_packets_count(count, bitstring, acc) do
+    {pkt, more} = parse_bitstring(bitstring)
+    parse_packets_count(count - 1, more, [pkt | acc])
+  end
+
+  defp parse_literal(version, <<1::1, chunk::4, rest::bitstring>>, acc) do
+    parse_literal(version, rest, (acc <<< 4) + chunk)
+  end
+
+  defp parse_literal(version, <<0::1, chunk::size(4), rest::bitstring>>, acc) do
+    {%{literal: %{version: version, val: (acc <<< 4) + chunk}}, rest}
+  end
+end
+```
+
+```elixir
+{%{literal: %{val: 2021, version: 6}}, _} = Parser.parse_hex("D2FE28")
+{%{literal: %{val: 10, version: 6}}, _} = Parser.parse_bitstring(<<0b11010001010::11>>)
+{%{literal: %{val: 20, version: 2}}, _} = Parser.parse_bitstring(<<0b0101001000100100::16>>)
+:pass
+```
+
+```elixir
+{%{
+   operator: %{
+     packets: [%{literal: %{val: 10, version: 6}}, %{literal: %{val: 20, version: 2}}],
+     version: 1
+   }
+ }, _} = Parser.parse_hex("38006F45291200")
+
+:pass
+```
+
+```elixir
+{%{
+   operator: %{
+     packets: [
+       %{literal: %{val: 1, version: 2}},
+       %{literal: %{val: 2, version: 4}},
+       %{literal: %{val: 3, version: 1}}
+     ],
+     version: 7
+   }
+ }, _} = Parser.parse_hex("EE00D40C823060")
+
+:pass
+```
+
+```elixir
+defmodule Part1 do
+  def sum_versions(%{operator: %{version: v, packets: pkts}}) do
+    Enum.reduce(pkts, v, &(sum_versions(&1) + &2))
+  end
+
+  def sum_versions(%{literal: %{version: v}}) do
+    v
+  end
+end
+
+{parsed, _} = Parser.parse_hex("8A004A801A8002F478")
+16 = Part1.sum_versions(parsed)
+{parsed, _} = Parser.parse_hex("620080001611562C8802118E34")
+12 = Part1.sum_versions(parsed)
+{parsed, _} = Parser.parse_hex("C0015000016115A2E0802F182340")
+23 = Part1.sum_versions(parsed)
+{parsed, _} = Parser.parse_hex("A0016C880162017C3686B18A3D4780")
+31 = Part1.sum_versions(parsed)
+:pass
+```
+
+```elixir
+{parsed, _} = Parser.parse_bitstring(input)
+Part1.sum_versions(parsed)
+```
+
+## Part 2
+
+```elixir
+defmodule Evaluator do
+  def eval(%{operator: %{type: 0, packets: pkts}}) do
+    pkts |> Enum.map(&eval/1) |> Enum.reduce(0, &+/2)
+  end
+
+  def eval(%{operator: %{type: 1, packets: pkts}}) do
+    pkts |> Enum.map(&eval/1) |> Enum.reduce(1, &*/2)
+  end
+
+  def eval(%{operator: %{type: 2, packets: pkts}}) do
+    pkts |> Enum.map(&eval/1) |> Enum.reduce(&min/2)
+  end
+
+  def eval(%{operator: %{type: 3, packets: pkts}}) do
+    pkts |> Enum.map(&eval/1) |> Enum.reduce(&max/2)
+  end
+
+  def eval(%{operator: %{type: 5, packets: [lhs, rhs]}}) do
+    if eval(lhs) > eval(rhs), do: 1, else: 0
+  end
+
+  def eval(%{operator: %{type: 6, packets: [lhs, rhs]}}) do
+    if eval(lhs) < eval(rhs), do: 1, else: 0
+  end
+
+  def eval(%{operator: %{type: 7, packets: [lhs, rhs]}}) do
+    if eval(lhs) == eval(rhs), do: 1, else: 0
+  end
+
+  def eval(%{literal: %{val: val}}) do
+    val
+  end
+end
+```
+
+```elixir
+3 = Evaluator.eval(Parser.parse_hex("C200B40A82") |> elem(0))
+54 = Evaluator.eval(Parser.parse_hex("04005AC33890") |> elem(0))
+7 = Evaluator.eval(Parser.parse_hex("880086C3E88112") |> elem(0))
+
+9 = Evaluator.eval(Parser.parse_hex("CE00C43D881120") |> elem(0))
+
+1 = Evaluator.eval(Parser.parse_hex("D8005AC2A8F0") |> elem(0))
+0 = Evaluator.eval(Parser.parse_hex("F600BC2D8F") |> elem(0))
+0 = Evaluator.eval(Parser.parse_hex("9C005AC2F8F0") |> elem(0))
+
+1 = Evaluator.eval(Parser.parse_hex("9C0141080250320F1802104A08") |> elem(0))
+:pass
+```
+
+```elixir
+{parsed, _} = Parser.parse_bitstring(input)
+Evaluator.eval(parsed)
+```
